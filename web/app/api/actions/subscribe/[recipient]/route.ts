@@ -118,6 +118,7 @@ export async function POST(req: Request, { params }: Params) {
 
   const response = await createPostResponse({
     fields: {
+      type: "transaction",
       transaction: tx,
       message: `Subscribed: ${amountSol} SOL streaming over ${days} days`,
     },

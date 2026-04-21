@@ -75,7 +75,7 @@ export async function POST(req: Request, { params }: Params) {
   const tx = new Transaction({ feePayer, recentBlockhash: blockhash }).add(ix);
 
   const response = await createPostResponse({
-    fields: { transaction: tx, message: "Claimed vested tips" },
+    fields: { type: "transaction", transaction: tx, message: "Claimed vested tips" },
   });
   return Response.json(response, { headers: ACTIONS_CORS_HEADERS });
 }
