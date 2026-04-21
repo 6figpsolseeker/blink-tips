@@ -41,7 +41,7 @@ export async function GET(req: Request, { params }: Params) {
 
   const payload: ActionGetResponse = {
     type: "action",
-    icon: `${origin}/tip-icon.png`,
+    icon: `${origin}/api/icon`,
     label: "Subscribe",
     title: `Tip ${short}`,
     description:

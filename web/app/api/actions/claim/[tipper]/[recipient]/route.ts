@@ -30,7 +30,7 @@ export async function GET(req: Request, { params }: Params) {
   const origin = new URL(req.url).origin;
   const payload: ActionGetResponse = {
     type: "action",
-    icon: `${origin}/tip-icon.png`,
+    icon: `${origin}/api/icon`,
     label: "Claim",
     title: "Claim vested tips",
     description: `Claim whatever has vested from ${rawT.slice(0, 4)}…${rawT.slice(-4)}.`,
