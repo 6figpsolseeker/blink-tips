@@ -5,9 +5,33 @@ import {
 } from "@solana/web3.js";
 import { createHash } from "crypto";
 
-export const PROGRAM_ID = new PublicKey(
-  process.env.TIP_VAULT_PROGRAM_ID ?? "TipV1111111111111111111111111111111111111",
-);
+const PLACEHOLDER = "TipV1111111111111111111111111111111111111";
+let programIdCache: PublicKey | Error | null = null;
+
+export function getProgramId(): PublicKey {
+  if (programIdCache instanceof PublicKey) return programIdCache;
+  if (programIdCache instanceof Error) throw programIdCache;
+  const raw = process.env.TIP_VAULT_PROGRAM_ID;
+  try {
+    if (!raw || raw === PLACEHOLDER) {
+      throw new ProgramIdNotConfiguredError();
+    }
+    programIdCache = new PublicKey(raw);
+    return programIdCache;
+  } catch (err) {
+    programIdCache = err instanceof Error ? err : new Error(String(err));
+    throw programIdCache;
+  }
+}
+
+export class ProgramIdNotConfiguredError extends Error {
+  constructor() {
+    super(
+      "TIP_VAULT_PROGRAM_ID is not set. Deploy the Anchor program (`anchor deploy`) and set TIP_VAULT_PROGRAM_ID in web/.env.local.",
+    );
+    this.name = "ProgramIdNotConfiguredError";
+  }
+}
 
 // Solana target throughput — used to convert a human duration (days) into slots.
 export const SLOTS_PER_SECOND = 2.5;
@@ -19,7 +43,7 @@ export function anchorDiscriminator(ixName: string): Buffer {
 export function vaultPda(tipper: PublicKey, recipient: PublicKey) {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("vault"), tipper.toBuffer(), recipient.toBuffer()],
-    PROGRAM_ID,
+    getProgramId(),
   );
 }
 
@@ -42,7 +66,7 @@ export function initializeVaultIx(args: {
     u64LE(args.initialDeposit),
   ]);
   return new TransactionInstruction({
-    programId: PROGRAM_ID,
+    programId: getProgramId(),
     keys: [
       { pubkey: args.tipper, isSigner: true, isWritable: true },
       { pubkey: args.recipient, isSigner: false, isWritable: false },
@@ -61,7 +85,7 @@ export function topUpIx(args: {
   const [vault] = vaultPda(args.tipper, args.recipient);
   const data = Buffer.concat([anchorDiscriminator("top_up"), u64LE(args.amount)]);
   return new TransactionInstruction({
-    programId: PROGRAM_ID,
+    programId: getProgramId(),
     keys: [
       { pubkey: args.tipper, isSigner: true, isWritable: true },
       { pubkey: args.recipient, isSigner: false, isWritable: false },
@@ -78,7 +102,7 @@ export function claimIx(args: {
 }): TransactionInstruction {
   const [vault] = vaultPda(args.tipper, args.recipient);
   return new TransactionInstruction({
-    programId: PROGRAM_ID,
+    programId: getProgramId(),
     keys: [
       { pubkey: args.tipper, isSigner: false, isWritable: false },
       { pubkey: args.recipient, isSigner: false, isWritable: true },

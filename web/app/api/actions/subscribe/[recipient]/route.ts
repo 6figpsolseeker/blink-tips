@@ -11,7 +11,11 @@ import {
   PublicKey,
   Transaction,
 } from "@solana/web3.js";
-import { initializeVaultIx, SLOTS_PER_SECOND } from "@/app/lib/tip-vault";
+import {
+  initializeVaultIx,
+  ProgramIdNotConfiguredError,
+  SLOTS_PER_SECOND,
+} from "@/app/lib/tip-vault";
 
 type Params = { params: Promise<{ recipient: string }> };
 
@@ -91,12 +95,20 @@ export async function POST(req: Request, { params }: Params) {
   // Round down, but never below 1 lamport/slot — a zero rate is rejected on-chain.
   const ratePerSlot = lamports / totalSlots || 1n;
 
-  const ix = initializeVaultIx({
-    tipper,
-    recipient,
-    ratePerSlot,
-    initialDeposit: lamports,
-  });
+  let ix;
+  try {
+    ix = initializeVaultIx({
+      tipper,
+      recipient,
+      ratePerSlot,
+      initialDeposit: lamports,
+    });
+  } catch (err) {
+    if (err instanceof ProgramIdNotConfiguredError) {
+      return jsonError(err.message, 503);
+    }
+    throw err;
+  }
 
   const rpcUrl = process.env.RPC_URL ?? clusterApiUrl("devnet");
   const conn = new Connection(rpcUrl, "confirmed");

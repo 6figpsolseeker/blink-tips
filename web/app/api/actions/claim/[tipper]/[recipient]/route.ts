@@ -5,7 +5,7 @@ import {
   createPostResponse,
 } from "@solana/actions";
 import { clusterApiUrl, Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { claimIx } from "@/app/lib/tip-vault";
+import { claimIx, ProgramIdNotConfiguredError } from "@/app/lib/tip-vault";
 
 type Params = { params: Promise<{ tipper: string; recipient: string }> };
 
@@ -59,7 +59,15 @@ export async function POST(req: Request, { params }: Params) {
   const feePayer = parsePubkey(body.account);
   if (!feePayer) return jsonError("Invalid account");
 
-  const ix = claimIx({ tipper, recipient });
+  let ix;
+  try {
+    ix = claimIx({ tipper, recipient });
+  } catch (err) {
+    if (err instanceof ProgramIdNotConfiguredError) {
+      return jsonError(err.message, 503);
+    }
+    throw err;
+  }
 
   const rpcUrl = process.env.RPC_URL ?? clusterApiUrl("devnet");
   const conn = new Connection(rpcUrl, "confirmed");
