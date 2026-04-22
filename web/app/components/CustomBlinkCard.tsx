@@ -194,10 +194,7 @@ export function CustomBlinkCard({ url }: { url: string }) {
       const signed = await signTransaction(tx);
 
       setStatus({ kind: "working", phase: "send", label: preset.label });
-      const raw =
-        signed instanceof VersionedTransaction
-          ? signed.serialize()
-          : signed.serialize();
+      const raw = signed.serialize();
       const signature = await connection.sendRawTransaction(raw, {
         skipPreflight: false,
         preflightCommitment: "confirmed",
