@@ -196,6 +196,7 @@ export function initializeTokenVaultIx(args: {
 }): TransactionInstruction {
   const [tokenVault] = tokenVaultPda(args.tipper, args.recipient, args.mint);
   const vaultAta = getAssociatedTokenAddressSync(args.mint, tokenVault, true);
+  const recipientAta = getAssociatedTokenAddressSync(args.mint, args.recipient);
   const tipperAta = getAssociatedTokenAddressSync(args.mint, args.tipper);
   const data = Buffer.concat([
     anchorDiscriminator("initialize_token_vault"),
@@ -210,6 +211,7 @@ export function initializeTokenVaultIx(args: {
       { pubkey: args.mint, isSigner: false, isWritable: false },
       { pubkey: tokenVault, isSigner: false, isWritable: true },
       { pubkey: vaultAta, isSigner: false, isWritable: true },
+      { pubkey: recipientAta, isSigner: false, isWritable: true },
       { pubkey: tipperAta, isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },

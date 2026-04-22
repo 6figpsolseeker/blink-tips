@@ -419,6 +419,17 @@ pub struct InitializeTokenVault<'info> {
         associated_token::authority = token_vault,
     )]
     pub vault_ata: Account<'info, TokenAccount>,
+    // Pre-create the recipient's ATA up front so later `claim_token` calls
+    // don't fail for recipients who have never held this mint. Tipper pays
+    // for the ATA rent (~0.002 SOL); they can reclaim on close_vault if no
+    // claim ever happens.
+    #[account(
+        init_if_needed,
+        payer = tipper,
+        associated_token::mint = mint,
+        associated_token::authority = recipient,
+    )]
+    pub recipient_ata: Account<'info, TokenAccount>,
     #[account(
         mut,
         associated_token::mint = mint,
