@@ -541,8 +541,12 @@ pub struct CloseTokenVault<'info> {
         associated_token::authority = token_vault,
     )]
     pub vault_ata: Account<'info, TokenAccount>,
+    // Defensively init_if_needed in case the recipient closed their ATA
+    // between subscribe and close. Tipper pays the ATA rent; they recover
+    // it when this close completes.
     #[account(
-        mut,
+        init_if_needed,
+        payer = tipper,
         associated_token::mint = mint,
         associated_token::authority = recipient,
     )]
@@ -554,6 +558,8 @@ pub struct CloseTokenVault<'info> {
     )]
     pub tipper_ata: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
 }
 
 #[error_code]
