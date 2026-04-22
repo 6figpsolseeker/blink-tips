@@ -10,40 +10,70 @@ export async function GET() {
           width: "100%",
           height: "100%",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: "#0a0a0a",
-          backgroundImage:
-            "radial-gradient(circle at center, #2f4030 0%, transparent 70%)",
-          color: "#fafafa",
-          fontFamily: "sans-serif",
+        }}
+      >
+        <BlinkLogo scale={1} />
+      </div>
+    ),
+    { width: 512, height: 512 },
+  );
+}
+
+function BlinkLogo({ scale }: { scale: number }) {
+  const letterSize = 180 * scale;
+  const dotSize = 40 * scale;
+  const archWidth = 70 * scale;
+  const archHeight = 26 * scale;
+  const archBorder = 12 * scale;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        color: "#ffffff",
+        fontFamily: "sans-serif",
+        fontSize: letterSize,
+        fontWeight: 900,
+        letterSpacing: -4 * scale,
+        lineHeight: 1,
+      }}
+    >
+      <span>BL</span>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: `0 ${8 * scale}px`,
         }}
       >
         <div
           style={{
             display: "flex",
-            fontSize: 260,
-            fontWeight: 900,
-            letterSpacing: -14,
-            lineHeight: 1,
+            width: archWidth,
+            height: archHeight,
+            borderTop: `${archBorder}px solid #ffffff`,
+            borderLeft: `${archBorder}px solid #ffffff`,
+            borderRight: `${archBorder}px solid #ffffff`,
+            borderTopLeftRadius: 9999,
+            borderTopRightRadius: 9999,
           }}
-        >
-          bt
-        </div>
+        />
         <div
           style={{
-            display: "flex",
-            fontSize: 44,
-            fontFamily: "monospace",
-            color: "#a1a1a1",
-            marginTop: -8,
+            marginTop: 12 * scale,
+            width: dotSize,
+            height: dotSize,
+            borderRadius: 9999,
+            background: "#ffffff",
           }}
-        >
-          blink-tips
-        </div>
+        />
       </div>
-    ),
-    { width: 512, height: 512 },
+      <span>NK</span>
+    </div>
   );
 }

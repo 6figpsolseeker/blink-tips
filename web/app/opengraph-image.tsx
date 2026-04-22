@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "blink-tips — recurring tips on Solana, one link";
+export const alt = "BLiNK — recurring tips on Solana, one link";
 
 export default function OGImage() {
   return new ImageResponse(
@@ -13,67 +13,85 @@ export default function OGImage() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
+          alignItems: "center",
           justifyContent: "center",
-          padding: "80px",
+          padding: "60px",
           backgroundColor: "#0a0a0a",
           backgroundImage:
-            "radial-gradient(circle at 20% 0%, rgba(156,175,136,0.35) 0%, transparent 55%)",
-          color: "#fafafa",
+            "radial-gradient(circle at 50% 30%, rgba(156,175,136,0.22) 0%, transparent 60%)",
+          color: "#ffffff",
           fontFamily: "sans-serif",
+        }}
+      >
+        <Wordmark />
+        <div
+          style={{
+            marginTop: 40,
+            fontSize: 30,
+            color: "#a1a1a1",
+            maxWidth: 900,
+            textAlign: "center",
+          }}
+        >
+          Recurring tips on Solana — streamed per slot, one link to share.
+        </div>
+      </div>
+    ),
+    size,
+  );
+}
+
+function Wordmark() {
+  const letterSize = 220;
+  const dotSize = 48;
+  const archWidth = 84;
+  const archHeight = 30;
+  const archBorder = 14;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        color: "#ffffff",
+        fontSize: letterSize,
+        fontWeight: 900,
+        letterSpacing: -5,
+        lineHeight: 1,
+      }}
+    >
+      <span>BL</span>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "0 10px",
         }}
       >
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: 16,
-            marginBottom: 48,
+            width: archWidth,
+            height: archHeight,
+            borderTop: `${archBorder}px solid #ffffff`,
+            borderLeft: `${archBorder}px solid #ffffff`,
+            borderRight: `${archBorder}px solid #ffffff`,
+            borderTopLeftRadius: 9999,
+            borderTopRightRadius: 9999,
           }}
-        >
-          <div
-            style={{
-              width: 18,
-              height: 18,
-              borderRadius: 999,
-              background: "#9CAF88",
-            }}
-          />
-          <div
-            style={{
-              fontSize: 32,
-              fontFamily: "monospace",
-              color: "#d4d4d4",
-            }}
-          >
-            blink-tips
-          </div>
-        </div>
+        />
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            fontSize: 88,
-            fontWeight: 700,
-            lineHeight: 1.05,
-            letterSpacing: -2,
+            marginTop: 14,
+            width: dotSize,
+            height: dotSize,
+            borderRadius: 9999,
+            background: "#ffffff",
           }}
-        >
-          <span>Recurring tips on Solana.</span>
-          <span style={{ color: "#6b7280" }}>One link.</span>
-        </div>
-        <div
-          style={{
-            marginTop: 40,
-            fontSize: 28,
-            color: "#a1a1a1",
-            maxWidth: 900,
-          }}
-        >
-          Share a Blink. One click opens a vault that streams SOL per slot — no
-          keepers, no middlemen.
-        </div>
+        />
       </div>
-    ),
-    size,
+      <span>NK</span>
+    </div>
   );
 }
