@@ -3,16 +3,16 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-tip_vault = "F9GaSaT6KG1pwjRcnZvfmNMyEoxLHqe5MMVQFgvg6Kiw"
+tip_vault = "Bqe678ZN7zXYWWnZqVNKGVbGe5javsqdhoLcyYb8JUsY"
 
 [programs.devnet]
-tip_vault = "F9GaSaT6KG1pwjRcnZvfmNMyEoxLHqe5MMVQFgvg6Kiw"
+tip_vault = "Bqe678ZN7zXYWWnZqVNKGVbGe5javsqdhoLcyYb8JUsY"
 
 # Replace with the mainnet program keypair's pubkey — generate a fresh
 # keypair before `anchor deploy --provider.cluster mainnet` and run
 # `anchor keys sync --provider.cluster mainnet` to populate this line.
 [programs.mainnet]
-tip_vault = "F9GaSaT6KG1pwjRcnZvfmNMyEoxLHqe5MMVQFgvg6Kiw"
+tip_vault = "Bqe678ZN7zXYWWnZqVNKGVbGe5javsqdhoLcyYb8JUsY"
 
 [registry]
 url = "https://api.apr.dev"

@@ -3,7 +3,7 @@ use anchor_lang::system_program;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, CloseAccount, Mint, Token, TokenAccount, Transfer};
 
-declare_id!("F9GaSaT6KG1pwjRcnZvfmNMyEoxLHqe5MMVQFgvg6Kiw");
+declare_id!("Bqe678ZN7zXYWWnZqVNKGVbGe5javsqdhoLcyYb8JUsY");
 
 #[program]
 pub mod tip_vault {

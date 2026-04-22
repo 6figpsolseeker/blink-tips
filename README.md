@@ -2,7 +2,7 @@
 
 Recurring tip vaults on Solana, shareable as [Blinks](https://docs.dialect.to/documentation/actions).
 
-> **Status:** early prototype. Devnet only. The program has not been audited — do not deposit mainnet funds.
+> **Status:** live on **mainnet** at `Bqe678ZN7zXYWWnZqVNKGVbGe5javsqdhoLcyYb8JUsY`. The program has not been audited — use at your own risk.
 
 Paste `https://<your-host>/tip/<recipient-pubkey>` into any Blinks-aware client (X, Dialect, Actions-compatible wallets) and it renders an inline "Subscribe" card. One click opens a vault that streams SOL to the recipient per Solana slot; the recipient claims whenever they want.
 
