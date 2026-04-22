@@ -38,11 +38,11 @@ export function resolveToken(input: string | null | undefined) {
   if (!input) return null;
   const lower = input.toLowerCase();
   if (KNOWN_TOKENS[lower]) return KNOWN_TOKENS[lower];
-  try {
-    return { mint: new PublicKey(input), decimals: 0, symbol: input.slice(0, 4) + "…" };
-  } catch {
-    return null;
-  }
+  // We previously accepted any base58 pubkey here and hard-coded decimals=0,
+  // which silently scaled "5 USDC" to 5 base units for unknown mints. Until
+  // we fetch decimals from chain (separate ix), refuse unknown mints so the
+  // user gets a clear "Unknown token" 400 instead of a footgun tx.
+  return null;
 }
 
 const PLACEHOLDER = "TipV1111111111111111111111111111111111111";
