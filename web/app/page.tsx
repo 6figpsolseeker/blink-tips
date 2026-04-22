@@ -10,6 +10,7 @@ export default function Home() {
         <HowItWorks />
         <Generate />
         <UnderTheHood />
+        <Leaderboard />
       </main>
       <Footer />
     </>
@@ -173,6 +174,46 @@ function UnderTheHood() {
         <pre className="overflow-x-auto rounded-xl border border-neutral-900 bg-black/50 p-4 text-[11px] leading-relaxed text-neutral-300">
           <code className="font-mono">{snippet}</code>
         </pre>
+      </div>
+    </section>
+  );
+}
+
+function Leaderboard() {
+  const ranks = [1, 2, 3, 4, 5];
+  return (
+    <section id="leaderboard" className="border-t border-neutral-900 py-16">
+      <div className="flex items-center gap-3">
+        <h2 className="text-sm font-medium uppercase tracking-widest text-neutral-500">
+          Leaderboard
+        </h2>
+        <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-accent">
+          Coming soon
+        </span>
+      </div>
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-neutral-400">
+        An on-chain ranking of the Solana wallets receiving the most tips
+        across blink-tips vaults. Aggregated from vault totals; no opt-in
+        required.
+      </p>
+      <div className="mt-6 overflow-hidden rounded-xl border border-neutral-900 bg-neutral-950/60">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-neutral-900 px-5 py-3 text-[10px] uppercase tracking-widest text-neutral-600">
+          <span>Rank</span>
+          <span>Recipient</span>
+          <span>Total tipped</span>
+        </div>
+        {ranks.map((r) => (
+          <div
+            key={r}
+            className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-neutral-900 px-5 py-4 last:border-b-0"
+          >
+            <span className="font-mono text-sm text-neutral-600">
+              {String(r).padStart(2, "0")}
+            </span>
+            <span className="h-3 w-40 rounded bg-neutral-900/80" />
+            <span className="h-3 w-16 rounded bg-neutral-900/80" />
+          </div>
+        ))}
       </div>
     </section>
   );
