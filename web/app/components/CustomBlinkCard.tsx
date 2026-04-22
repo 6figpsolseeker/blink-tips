@@ -189,6 +189,12 @@ export function CustomBlinkCard({ url }: { url: string }) {
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      // Silently reset on wallet rejection — the user pressed "Cancel",
+      // they don't need a scary red error telling them that.
+      if (/user\s+(rejected|denied|cancell?ed)|request\s+was\s+rejected/i.test(msg)) {
+        setStatus({ kind: "idle" });
+        return;
+      }
       setStatus({ kind: "error", message: msg });
     } finally {
       setBusyIdx(null);
