@@ -2,9 +2,6 @@
 
 import dynamic from "next/dynamic";
 
-// Solana wallet adapter + Dialect Blinks renderer both reach for browser
-// globals at module scope — loading them server-side crashes hydration.
-// Force client-only rendering.
 const SolanaProviders = dynamic(
   () =>
     import("@/app/components/SolanaProviders").then((m) => ({
@@ -13,10 +10,10 @@ const SolanaProviders = dynamic(
   { ssr: false },
 );
 
-const BlinkRender = dynamic(
+const CustomBlinkCard = dynamic(
   () =>
-    import("@/app/components/BlinkRender").then((m) => ({
-      default: m.BlinkRender,
+    import("@/app/components/CustomBlinkCard").then((m) => ({
+      default: m.CustomBlinkCard,
     })),
   {
     ssr: false,
@@ -37,7 +34,7 @@ export function TipClient({
 }) {
   return (
     <SolanaProviders rpcUrl={rpcUrl}>
-      <BlinkRender url={url} rpcUrl={rpcUrl} />
+      <CustomBlinkCard url={url} />
     </SolanaProviders>
   );
 }
