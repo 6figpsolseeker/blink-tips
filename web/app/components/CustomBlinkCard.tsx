@@ -245,7 +245,16 @@ export function CustomBlinkCard({ url }: { url: string }) {
       const msg = e instanceof Error ? e.message : String(e);
       // Silently reset on wallet rejection — the user pressed "Cancel",
       // they don't need a scary red error telling them that.
-      if (/user\s+(rejected|denied|cancell?ed)|request\s+was\s+rejected/i.test(msg)) {
+      // Match a broader set of wallet-rejection phrasings:
+      //   "User rejected the request"       (Phantom)
+      //   "User denied signing"             (Solflare)
+      //   "Transaction was cancelled"       (past-tense, some wallets)
+      //   "Signature request was rejected"  (common wrapper)
+      //   "Rejected by the user"            (older phrasing)
+      //   "Approval denied"                 (Backpack variant)
+      const rejectionRe =
+        /(?:user|request|transaction|approval|sign(?:ing|ature)?)\s+(?:request\s+)?(?:was\s+)?(?:rejected|denied|cancell?ed|aborted)|(?:rejected|cancell?ed|denied)\s+by\s+(?:the\s+)?user/i;
+      if (rejectionRe.test(msg)) {
         setStatus({ kind: "idle" });
         return;
       }
