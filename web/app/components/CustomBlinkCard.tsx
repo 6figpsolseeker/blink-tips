@@ -90,6 +90,10 @@ export function CustomBlinkCard({ url }: { url: string }) {
     // a tx that was built for a different account.
     const submitAccount = publicKey;
 
+    // Clear any lingering success/error banner from a previous click so the
+    // card isn't showing stale state while this next tx is in flight.
+    setStatus({ kind: "idle" });
+
     const values = inputs[String(idx)] ?? {};
     if (preset.parameters) {
       for (const p of preset.parameters) {
