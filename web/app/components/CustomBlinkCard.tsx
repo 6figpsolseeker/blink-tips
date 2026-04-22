@@ -36,7 +36,12 @@ type Status =
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
+  // Our server returns standard base64, but Action providers elsewhere
+  // sometimes use base64url (- / _ in place of + / /), and atob only
+  // speaks standard. Coerce and re-pad defensively.
+  const std = b64.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
+  const bin = atob(padded);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes;
