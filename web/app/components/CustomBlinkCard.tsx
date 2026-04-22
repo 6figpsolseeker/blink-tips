@@ -190,18 +190,30 @@ export function CustomBlinkCard({ url }: { url: string }) {
 
       setStatus({ kind: "working", phase: "confirm", label: preset.label });
       let landed: { err: unknown; confirmationStatus?: string } | null = null;
+      let consecutiveErrors = 0;
       for (let i = 0; i < 90; i++) {
-        const s = await connection.getSignatureStatus(signature, {
-          searchTransactionHistory: true,
-        });
-        const val = s.value;
-        if (
-          val &&
-          (val.confirmationStatus === "confirmed" ||
-            val.confirmationStatus === "finalized")
-        ) {
-          landed = val;
-          break;
+        try {
+          const s = await connection.getSignatureStatus(signature, {
+            searchTransactionHistory: true,
+          });
+          consecutiveErrors = 0;
+          const val = s.value;
+          if (
+            val &&
+            (val.confirmationStatus === "confirmed" ||
+              val.confirmationStatus === "finalized")
+          ) {
+            landed = val;
+            break;
+          }
+        } catch (pollErr) {
+          // Transient RPC failures shouldn't kill the poll — the tx may
+          // still be landing. Bail after 10 consecutive errors.
+          consecutiveErrors += 1;
+          if (consecutiveErrors >= 10) {
+            console.error("[blink] getSignatureStatus failing repeatedly", pollErr);
+            break;
+          }
         }
         await sleep(1000);
       }
