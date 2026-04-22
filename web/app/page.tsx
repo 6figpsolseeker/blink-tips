@@ -20,11 +20,24 @@ export default function Home() {
 function Header() {
   return (
     <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-6">
-      <div className="flex items-center gap-2">
-        <span className="inline-block h-2 w-2 rounded-full bg-accent" />
-        <span className="font-mono text-sm tracking-tight text-neutral-200">
-          blink-tips
-        </span>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="inline-block h-2 w-2 rounded-full bg-accent" />
+          <span className="font-mono text-sm tracking-tight text-neutral-200">
+            blink-tips
+          </span>
+        </div>
+        <a
+          href="https://x.com/BlinkTipsSol"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="BlinkTipsSol on X"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-800 text-neutral-400 transition hover:border-accent/60 hover:text-neutral-100"
+        >
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+            <path d="M18.244 2H21l-6.52 7.45L22 22h-6.18l-4.83-6.32L5.5 22H3l7-8L2 2h6.31l4.38 5.77L18.244 2Zm-1.084 18h1.66L7.01 4H5.24l11.92 16Z" />
+          </svg>
+        </a>
       </div>
       <nav className="flex items-center gap-5 text-sm text-neutral-400">
         <a href="#how" className="hover:text-neutral-100">
