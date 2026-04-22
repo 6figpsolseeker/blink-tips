@@ -1,6 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { BlinkRender } from "@/app/components/BlinkRender";
-import { SolanaProviders } from "@/app/components/SolanaProviders";
+import { TipClient } from "./TipClient";
 
 type Props = { params: Promise<{ recipient: string }> };
 
@@ -31,9 +30,7 @@ export default async function TipPage({ params }: Props) {
           <h1 className="mb-6 text-2xl font-semibold tracking-tight">
             Tip {short}
           </h1>
-          <SolanaProviders rpcUrl={rpcUrl}>
-            <BlinkRender url={actionUrl} rpcUrl={rpcUrl} />
-          </SolanaProviders>
+          <TipClient url={actionUrl} rpcUrl={rpcUrl} />
           <div className="mt-6 text-xs text-neutral-500">
             <a href="/" className="underline hover:text-neutral-200">
               ← blink-tips
