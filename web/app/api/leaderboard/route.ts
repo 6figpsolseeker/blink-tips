@@ -77,9 +77,15 @@ export async function GET() {
       return Response.json({ top: [], error: err.message }, { status: 503 });
     }
     console.error("[leaderboard] unhandled", err);
+    // Return 5xx on genuine RPC failures so ops alerting / uptime checks
+    // see the outage. Client treats any non-200 as "no data" and falls
+    // back to the "Coming soon" placeholder, so UX is unchanged.
     return Response.json(
       { top: [], error: err instanceof Error ? err.message : String(err) },
-      { status: 200 },
+      {
+        status: 502,
+        headers: { "Cache-Control": "no-store" },
+      },
     );
   }
 }
