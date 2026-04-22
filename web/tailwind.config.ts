@@ -6,10 +6,10 @@ export default {
     extend: {
       colors: {
         accent: {
-          DEFAULT: "#9945FF", // Solana purple
-          muted: "#6B3AB8",
+          DEFAULT: "#9CAF88", // sage green
+          muted: "#6B8058",
         },
-        success: "#14F195", // Solana green
+        success: "#14F195", // Solana green (kept for live-status dot)
       },
       fontFamily: {
         sans: [

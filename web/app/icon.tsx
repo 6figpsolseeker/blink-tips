@@ -22,7 +22,7 @@ export default function Icon() {
             width: 14,
             height: 14,
             borderRadius: 999,
-            background: "#9945FF",
+            background: "#9CAF88",
           }}
         />
       </div>

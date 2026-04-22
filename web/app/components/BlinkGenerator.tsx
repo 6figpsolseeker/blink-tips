@@ -114,7 +114,7 @@ function ShareOnX({ url }: { url: string }) {
 
 function BlinkPreview({ short, valid }: { short: string; valid: boolean }) {
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 shadow-[0_0_40px_-20px_rgba(153,69,255,0.5)]">
+    <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 shadow-[0_0_40px_-20px_rgba(156,175,136,0.5)]">
       <div className="text-[10px] uppercase tracking-widest text-neutral-600">
         Preview · as rendered in a Blinks client
       </div>

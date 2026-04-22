@@ -17,7 +17,7 @@ export default function OGImage() {
           padding: "80px",
           backgroundColor: "#0a0a0a",
           backgroundImage:
-            "radial-gradient(circle at 20% 0%, rgba(153,69,255,0.35) 0%, transparent 55%)",
+            "radial-gradient(circle at 20% 0%, rgba(156,175,136,0.35) 0%, transparent 55%)",
           color: "#fafafa",
           fontFamily: "sans-serif",
         }}
@@ -35,7 +35,7 @@ export default function OGImage() {
               width: 18,
               height: 18,
               borderRadius: 999,
-              background: "#9945FF",
+              background: "#9CAF88",
             }}
           />
           <div

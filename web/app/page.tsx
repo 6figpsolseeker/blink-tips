@@ -56,7 +56,7 @@ function Hero() {
     <section className="pt-16 pb-24">
       <div className="inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-950 px-3 py-1 text-xs text-neutral-400">
         <span className="h-1.5 w-1.5 rounded-full bg-success" />
-        Live on devnet · MIT licensed
+        Live on mainnet · MIT licensed
       </div>
       <h1 className="mt-6 text-4xl font-semibold tracking-tight sm:text-5xl">
         Recurring tips on Solana.

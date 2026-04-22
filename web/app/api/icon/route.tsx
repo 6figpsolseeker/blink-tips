@@ -15,7 +15,7 @@ export async function GET() {
           justifyContent: "center",
           backgroundColor: "#0a0a0a",
           backgroundImage:
-            "radial-gradient(circle at center, #2d1b69 0%, transparent 70%)",
+            "radial-gradient(circle at center, #2f4030 0%, transparent 70%)",
           color: "#fafafa",
           fontFamily: "sans-serif",
         }}
