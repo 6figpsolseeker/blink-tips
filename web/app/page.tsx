@@ -39,6 +39,15 @@ function Header() {
             <path d="M18.244 2H21l-6.52 7.45L22 22h-6.18l-4.83-6.32L5.5 22H3l7-8L2 2h6.31l4.38 5.77L18.244 2Zm-1.084 18h1.66L7.01 4H5.24l11.92 16Z" />
           </svg>
         </a>
+        <a
+          href="https://pump.fun/coin/2Zg1tBhmQ2DF9FXmAPr8KwWHVSDrVf8AUHpJAMk2pump"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="$BLINK on pump.fun"
+          className="inline-flex h-7 items-center justify-center rounded-md border border-neutral-800 px-2 text-[11px] font-medium tracking-tight text-neutral-400 transition hover:border-accent/60 hover:text-neutral-100"
+        >
+          $BLINK
+        </a>
       </div>
       <nav className="flex items-center gap-5 text-sm text-neutral-400">
         <a href="#how" className="hover:text-neutral-100">
@@ -199,14 +208,6 @@ function Footer() {
       <div className="mx-auto flex max-w-3xl flex-col items-start justify-between gap-3 px-6 py-8 text-xs text-neutral-500 sm:flex-row sm:items-center">
         <div>MIT licensed · mainnet · not audited</div>
         <div className="flex items-center gap-4">
-          <a
-            href="https://pump.fun/coin/2Zg1tBhmQ2DF9FXmAPr8KwWHVSDrVf8AUHpJAMk2pump"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-neutral-200"
-          >
-            $BLINK on pump.fun
-          </a>
           <a
             href="https://docs.dialect.to/documentation/actions"
             target="_blank"
