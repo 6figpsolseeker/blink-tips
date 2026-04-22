@@ -1,9 +1,34 @@
 import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddressSync,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import {
   PublicKey,
   SystemProgram,
   TransactionInstruction,
 } from "@solana/web3.js";
 import { createHash } from "crypto";
+
+// Devnet USDC. For mainnet use EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v.
+export const USDC_MINT_DEVNET = new PublicKey(
+  "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+);
+
+export const KNOWN_TOKENS: Record<string, { mint: PublicKey; decimals: number; symbol: string }> = {
+  usdc: { mint: USDC_MINT_DEVNET, decimals: 6, symbol: "USDC" },
+};
+
+export function resolveToken(input: string | null | undefined) {
+  if (!input) return null;
+  const lower = input.toLowerCase();
+  if (KNOWN_TOKENS[lower]) return KNOWN_TOKENS[lower];
+  try {
+    return { mint: new PublicKey(input), decimals: 0, symbol: input.slice(0, 4) + "…" };
+  } catch {
+    return null;
+  }
+}
 
 const PLACEHOLDER = "TipV1111111111111111111111111111111111111";
 let programIdCache: PublicKey | Error | null = null;
@@ -43,6 +68,22 @@ export function anchorDiscriminator(ixName: string): Buffer {
 export function vaultPda(tipper: PublicKey, recipient: PublicKey) {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("vault"), tipper.toBuffer(), recipient.toBuffer()],
+    getProgramId(),
+  );
+}
+
+export function tokenVaultPda(
+  tipper: PublicKey,
+  recipient: PublicKey,
+  mint: PublicKey,
+) {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("token_vault"),
+      tipper.toBuffer(),
+      recipient.toBuffer(),
+      mint.toBuffer(),
+    ],
     getProgramId(),
   );
 }
@@ -109,5 +150,90 @@ export function claimIx(args: {
       { pubkey: vault, isSigner: false, isWritable: true },
     ],
     data: anchorDiscriminator("claim"),
+  });
+}
+
+// ─── SPL token variants ────────────────────────────────────────────────────
+
+export function initializeTokenVaultIx(args: {
+  tipper: PublicKey;
+  recipient: PublicKey;
+  mint: PublicKey;
+  ratePerSlot: bigint;
+  initialDeposit: bigint;
+}): TransactionInstruction {
+  const [tokenVault] = tokenVaultPda(args.tipper, args.recipient, args.mint);
+  const vaultAta = getAssociatedTokenAddressSync(args.mint, tokenVault, true);
+  const tipperAta = getAssociatedTokenAddressSync(args.mint, args.tipper);
+  const data = Buffer.concat([
+    anchorDiscriminator("initialize_token_vault"),
+    u64LE(args.ratePerSlot),
+    u64LE(args.initialDeposit),
+  ]);
+  return new TransactionInstruction({
+    programId: getProgramId(),
+    keys: [
+      { pubkey: args.tipper, isSigner: true, isWritable: true },
+      { pubkey: args.recipient, isSigner: false, isWritable: false },
+      { pubkey: args.mint, isSigner: false, isWritable: false },
+      { pubkey: tokenVault, isSigner: false, isWritable: true },
+      { pubkey: vaultAta, isSigner: false, isWritable: true },
+      { pubkey: tipperAta, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+}
+
+export function claimTokenIx(args: {
+  tipper: PublicKey;
+  recipient: PublicKey;
+  mint: PublicKey;
+}): TransactionInstruction {
+  const [tokenVault] = tokenVaultPda(args.tipper, args.recipient, args.mint);
+  const vaultAta = getAssociatedTokenAddressSync(args.mint, tokenVault, true);
+  const recipientAta = getAssociatedTokenAddressSync(args.mint, args.recipient);
+  return new TransactionInstruction({
+    programId: getProgramId(),
+    keys: [
+      { pubkey: args.tipper, isSigner: false, isWritable: false },
+      { pubkey: args.recipient, isSigner: false, isWritable: false },
+      { pubkey: args.mint, isSigner: false, isWritable: false },
+      { pubkey: tokenVault, isSigner: false, isWritable: true },
+      { pubkey: vaultAta, isSigner: false, isWritable: true },
+      { pubkey: recipientAta, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: anchorDiscriminator("claim_token"),
+  });
+}
+
+export function topUpTokenIx(args: {
+  tipper: PublicKey;
+  recipient: PublicKey;
+  mint: PublicKey;
+  amount: bigint;
+}): TransactionInstruction {
+  const [tokenVault] = tokenVaultPda(args.tipper, args.recipient, args.mint);
+  const vaultAta = getAssociatedTokenAddressSync(args.mint, tokenVault, true);
+  const tipperAta = getAssociatedTokenAddressSync(args.mint, args.tipper);
+  const data = Buffer.concat([
+    anchorDiscriminator("top_up_token"),
+    u64LE(args.amount),
+  ]);
+  return new TransactionInstruction({
+    programId: getProgramId(),
+    keys: [
+      { pubkey: args.tipper, isSigner: true, isWritable: true },
+      { pubkey: args.recipient, isSigner: false, isWritable: false },
+      { pubkey: args.mint, isSigner: false, isWritable: false },
+      { pubkey: tokenVault, isSigner: false, isWritable: true },
+      { pubkey: vaultAta, isSigner: false, isWritable: true },
+      { pubkey: tipperAta, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data,
   });
 }
