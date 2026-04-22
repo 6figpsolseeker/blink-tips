@@ -18,6 +18,10 @@ import {
   resolveToken,
   RpcNotConfiguredError,
   SLOTS_PER_SECOND,
+  tokenVaultPda,
+  topUpIx,
+  topUpTokenIx,
+  vaultPda,
 } from "@/app/lib/tip-vault";
 
 type Params = { params: Promise<{ recipient: string }> };
@@ -125,38 +129,6 @@ export async function POST(req: Request, { params }: Params) {
 
   const totalSlots = BigInt(Math.floor(days * 86_400 * SLOTS_PER_SECOND));
 
-  let ix;
-  let message: string;
-  try {
-    if (token) {
-      const base = BigInt(Math.floor(amountHuman * 10 ** token.decimals));
-      const ratePerSlot = base / totalSlots || 1n;
-      ix = initializeTokenVaultIx({
-        tipper,
-        recipient,
-        mint: token.mint,
-        ratePerSlot,
-        initialDeposit: base,
-      });
-      message = `Subscribed: ${amountHuman} ${token.symbol} streaming over ${days} days`;
-    } else {
-      const lamports = BigInt(Math.floor(amountHuman * LAMPORTS_PER_SOL));
-      const ratePerSlot = lamports / totalSlots || 1n;
-      ix = initializeVaultIx({
-        tipper,
-        recipient,
-        ratePerSlot,
-        initialDeposit: lamports,
-      });
-      message = `Subscribed: ${amountHuman} SOL streaming over ${days} days`;
-    }
-  } catch (err) {
-    if (err instanceof ProgramIdNotConfiguredError) {
-      return jsonError(err.message, 503);
-    }
-    throw err;
-  }
-
   let rpcUrl: string;
   try {
     rpcUrl = getRpcUrl();
@@ -165,6 +137,72 @@ export async function POST(req: Request, { params }: Params) {
     throw err;
   }
   const conn = new Connection(rpcUrl, "confirmed");
+
+  // Branch on whether the vault already exists: init the first time, top_up
+  // after. Prevents the System Program "account already in use" failure when
+  // a tipper subscribes to the same recipient twice.
+  const vaultAddress = token
+    ? tokenVaultPda(tipper, recipient, token.mint)[0]
+    : vaultPda(tipper, recipient)[0];
+
+  let vaultExists: boolean;
+  try {
+    vaultExists = (await conn.getAccountInfo(vaultAddress)) !== null;
+  } catch {
+    vaultExists = false;
+  }
+
+  let ix;
+  let message: string;
+  try {
+    if (token) {
+      const base = BigInt(Math.floor(amountHuman * 10 ** token.decimals));
+      if (vaultExists) {
+        ix = topUpTokenIx({
+          tipper,
+          recipient,
+          mint: token.mint,
+          amount: base,
+        });
+        message = `Topped up your ${token.symbol} vault with ${amountHuman} (existing rate kept)`;
+      } else {
+        const ratePerSlot = base / totalSlots || 1n;
+        ix = initializeTokenVaultIx({
+          tipper,
+          recipient,
+          mint: token.mint,
+          ratePerSlot,
+          initialDeposit: base,
+        });
+        message = `Subscribed: ${amountHuman} ${token.symbol} streaming over ${days} days`;
+      }
+    } else {
+      const lamports = BigInt(Math.floor(amountHuman * LAMPORTS_PER_SOL));
+      if (vaultExists) {
+        ix = topUpIx({
+          tipper,
+          recipient,
+          amount: lamports,
+        });
+        message = `Topped up your SOL vault with ${amountHuman} (existing rate kept)`;
+      } else {
+        const ratePerSlot = lamports / totalSlots || 1n;
+        ix = initializeVaultIx({
+          tipper,
+          recipient,
+          ratePerSlot,
+          initialDeposit: lamports,
+        });
+        message = `Subscribed: ${amountHuman} SOL streaming over ${days} days`;
+      }
+    }
+  } catch (err) {
+    if (err instanceof ProgramIdNotConfiguredError) {
+      return jsonError(err.message, 503);
+    }
+    throw err;
+  }
+
   const { blockhash } = await conn.getLatestBlockhash();
 
   const tx = new Transaction({ feePayer: tipper, recentBlockhash: blockhash }).add(ix);
