@@ -110,7 +110,16 @@ export function CustomBlinkCard({ url }: { url: string }) {
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text.slice(0, 200));
+        // Our server returns {"message": "..."} on 4xx/5xx. Prefer that
+        // over dumping the raw JSON string into the UI.
+        let msg = text;
+        try {
+          const j = JSON.parse(text);
+          if (typeof j?.message === "string") msg = j.message;
+        } catch {
+          // Not JSON — keep text as-is.
+        }
+        throw new Error(msg.slice(0, 300));
       }
       const json = await res.json();
       const b64 = json.transaction as string | undefined;
