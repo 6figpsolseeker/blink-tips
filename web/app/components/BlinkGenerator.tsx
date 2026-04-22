@@ -62,6 +62,7 @@ export function BlinkGenerator() {
             >
               {copied ? "Copied" : "Copy"}
             </button>
+            <ShareOnX url={url} />
           </div>
           <p className="mt-3 text-xs text-neutral-500">
             Paste this into X, Discord, Telegram, or any Blinks-aware client.
@@ -71,6 +72,43 @@ export function BlinkGenerator() {
 
       <BlinkPreview short={short} valid={isValid} />
     </div>
+  );
+}
+
+function ShareOnX({ url }: { url: string }) {
+  const disabled = !url;
+  const text = "Tip me on-chain. One click opens a recurring Solana vault.";
+  const href = disabled
+    ? undefined
+    : `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  const className =
+    "inline-flex items-center gap-1.5 rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:border-accent/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-neutral-800 disabled:hover:text-neutral-200";
+
+  const icon = (
+    <svg
+      viewBox="0 0 24 24"
+      width="12"
+      height="12"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M18.244 2H21l-6.52 7.45L22 22h-6.18l-4.83-6.32L5.5 22H3l7-8L2 2h6.31l4.38 5.77L18.244 2Zm-1.084 18h1.66L7.01 4H5.24l11.92 16Z" />
+    </svg>
+  );
+
+  if (disabled) {
+    return (
+      <button type="button" disabled className={className}>
+        {icon}
+        <span>Share</span>
+      </button>
+    );
+  }
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className={className}>
+      {icon}
+      <span>Share</span>
+    </a>
   );
 }
 
