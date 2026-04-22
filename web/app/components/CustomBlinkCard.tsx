@@ -133,6 +133,19 @@ export function CustomBlinkCard({ url }: { url: string }) {
         tx = Transaction.from(bytes);
       }
 
+      // Defense-in-depth: verify the server-built tx pays from our connected
+      // wallet. A compromised server otherwise could return a tx with an
+      // arbitrary feePayer and the user would happily sign away funds.
+      const feePayer =
+        tx instanceof VersionedTransaction
+          ? tx.message.staticAccountKeys[0]
+          : tx.feePayer ?? null;
+      if (!feePayer || !feePayer.equals(publicKey)) {
+        throw new Error(
+          "Transaction feePayer does not match the connected wallet — refusing to sign.",
+        );
+      }
+
       // Refresh the blockhash just before signing so a slow wallet click
       // doesn't hit "Blockhash not found". VersionedTransaction message is
       // immutable, so we only do this on the legacy path.
