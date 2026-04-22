@@ -159,9 +159,16 @@ export function CustomBlinkCard({ url }: { url: string }) {
       // doesn't hit "Blockhash not found". VersionedTransaction message is
       // immutable, so we only do this on the legacy path.
       if (tx instanceof Transaction) {
-        const fresh = await connection.getLatestBlockhash("confirmed");
-        tx.recentBlockhash = fresh.blockhash;
-        tx.lastValidBlockHeight = fresh.lastValidBlockHeight;
+        try {
+          const fresh = await connection.getLatestBlockhash("confirmed");
+          tx.recentBlockhash = fresh.blockhash;
+          tx.lastValidBlockHeight = fresh.lastValidBlockHeight;
+        } catch (e) {
+          console.error("[blink] getLatestBlockhash failed", e);
+          throw new Error(
+            "Couldn't fetch a fresh blockhash from the RPC — please retry in a moment.",
+          );
+        }
       }
 
       setStatus({ kind: "working", phase: "sign", label: preset.label });
