@@ -34,14 +34,6 @@ function Header() {
         <a href="#generate" className="hover:text-neutral-100">
           Generate
         </a>
-        <a
-          href={GITHUB_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="hover:text-neutral-100"
-        >
-          GitHub
-        </a>
       </nav>
     </header>
   );
