@@ -4,8 +4,13 @@ import {
   type ActionPostRequest,
   createPostResponse,
 } from "@solana/actions";
-import { clusterApiUrl, Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { claimIx, ProgramIdNotConfiguredError } from "@/app/lib/tip-vault";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
+import {
+  claimIx,
+  getRpcUrl,
+  ProgramIdNotConfiguredError,
+  RpcNotConfiguredError,
+} from "@/app/lib/tip-vault";
 
 type Params = { params: Promise<{ tipper: string; recipient: string }> };
 
@@ -69,7 +74,13 @@ export async function POST(req: Request, { params }: Params) {
     throw err;
   }
 
-  const rpcUrl = process.env.RPC_URL ?? clusterApiUrl("devnet");
+  let rpcUrl: string;
+  try {
+    rpcUrl = getRpcUrl();
+  } catch (err) {
+    if (err instanceof RpcNotConfiguredError) return jsonError(err.message, 503);
+    throw err;
+  }
   const conn = new Connection(rpcUrl, "confirmed");
   const { blockhash } = await conn.getLatestBlockhash();
   const tx = new Transaction({ feePayer, recentBlockhash: blockhash }).add(ix);

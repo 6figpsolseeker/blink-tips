@@ -8,6 +8,12 @@ tip_vault = "F9GaSaT6KG1pwjRcnZvfmNMyEoxLHqe5MMVQFgvg6Kiw"
 [programs.devnet]
 tip_vault = "F9GaSaT6KG1pwjRcnZvfmNMyEoxLHqe5MMVQFgvg6Kiw"
 
+# Replace with the mainnet program keypair's pubkey — generate a fresh
+# keypair before `anchor deploy --provider.cluster mainnet` and run
+# `anchor keys sync --provider.cluster mainnet` to populate this line.
+[programs.mainnet]
+tip_vault = "F9GaSaT6KG1pwjRcnZvfmNMyEoxLHqe5MMVQFgvg6Kiw"
+
 [registry]
 url = "https://api.apr.dev"
 

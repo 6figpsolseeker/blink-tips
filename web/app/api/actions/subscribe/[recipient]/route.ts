@@ -5,17 +5,18 @@ import {
   createPostResponse,
 } from "@solana/actions";
 import {
-  clusterApiUrl,
   Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
   Transaction,
 } from "@solana/web3.js";
 import {
+  getRpcUrl,
   initializeTokenVaultIx,
   initializeVaultIx,
   ProgramIdNotConfiguredError,
   resolveToken,
+  RpcNotConfiguredError,
   SLOTS_PER_SECOND,
 } from "@/app/lib/tip-vault";
 
@@ -105,8 +106,17 @@ export async function POST(req: Request, { params }: Params) {
   const tokenParam = url.searchParams.get("token");
   const token = resolveToken(tokenParam);
   if (tokenParam && !token) return jsonError("Unknown token");
-  if (!Number.isFinite(amountHuman) || amountHuman <= 0) return jsonError("Invalid amount");
-  if (!Number.isFinite(days) || days <= 0) return jsonError("Invalid duration");
+  // Caps are well below u64 overflow for any realistic token, and days ≥ 1
+  // protects tippers from footgun sub-day streams where a typo drains funds.
+  const MAX_AMOUNT = 1_000_000_000; // 1B tokens, hard cap against overflow
+  const MIN_DAYS = 1;
+  const MAX_DAYS = 3650; // 10 years
+  if (!Number.isFinite(amountHuman) || amountHuman <= 0 || amountHuman > MAX_AMOUNT) {
+    return jsonError(`Amount must be between 0 and ${MAX_AMOUNT}`);
+  }
+  if (!Number.isFinite(days) || days < MIN_DAYS || days > MAX_DAYS) {
+    return jsonError(`Duration must be between ${MIN_DAYS} and ${MAX_DAYS} days`);
+  }
 
   const body: ActionPostRequest = await req.json();
   const tipper = parseRecipient(body.account);
@@ -147,7 +157,13 @@ export async function POST(req: Request, { params }: Params) {
     throw err;
   }
 
-  const rpcUrl = process.env.RPC_URL ?? clusterApiUrl("devnet");
+  let rpcUrl: string;
+  try {
+    rpcUrl = getRpcUrl();
+  } catch (err) {
+    if (err instanceof RpcNotConfiguredError) return jsonError(err.message, 503);
+    throw err;
+  }
   const conn = new Connection(rpcUrl, "confirmed");
   const { blockhash } = await conn.getLatestBlockhash();
 

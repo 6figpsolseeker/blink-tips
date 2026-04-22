@@ -93,10 +93,28 @@ Open http://localhost:3000 — the root page lists available endpoints. Share `h
 | `POST` | `/api/actions/claim/[tipper]/[recipient]` | Returns an unsigned `claim` transaction. |
 | `GET`  | `/actions.json` | Declares which paths are Actions-compatible. |
 
+## Mainnet deploy checklist
+
+The program is live on **devnet only**. Before deploying to mainnet, walk through this list — the project is **not audited**, and several defaults only make sense for devnet.
+
+1. **Generate a fresh program keypair** for mainnet (do not reuse the devnet keypair):
+   ```bash
+   solana-keygen new -o target/deploy/tip_vault-keypair.json --force
+   ```
+2. **Update `[programs.mainnet]`** in [Anchor.toml](Anchor.toml) with the new pubkey (`anchor keys sync --provider.cluster mainnet`).
+3. **Fund the wallet on mainnet** with real SOL (program rent + buffer is ~2 SOL; budget ~3 SOL).
+4. **Deploy**: `anchor deploy --provider.cluster mainnet` — note the resulting program ID.
+5. **Set Vercel env vars** (or your equivalent hosting):
+   - `NETWORK=mainnet`
+   - `TIP_VAULT_PROGRAM_ID=<mainnet program ID>`
+   - `RPC_URL=<dedicated provider URL>` — **required on mainnet**; endpoints return 503 if unset.
+6. **Redeploy the web app** so the new env is applied.
+7. **Consider an audit** before accepting user funds at any meaningful scale.
+
 ## Roadmap
 
 - [x] Mocha test suite: init → advance slots → claim → top-up-after-empty → close
-- [ ] SPL token vaults (USDC) with per-vault ATAs
+- [x] SPL token vaults (USDC) with per-vault ATAs
 - [ ] Pyth-driven token conversion at claim time for multi-token tipping
 - [ ] Compressed vault state via Light Protocol (sub-cent rent at scale)
 - [ ] On-chain leaderboard / indexer for top supporters
@@ -104,9 +122,8 @@ Open http://localhost:3000 — the root page lists available endpoints. Share `h
 
 ## Known limitations
 
-- **SOL only** for now. Multi-token support requires a token-vault variant.
-- **Program ID is a placeholder** (`TipV1111…`). Run `anchor keys sync` before deploying.
 - **Slot-based vesting** uses a fixed `SLOTS_PER_SECOND = 2.5` estimate in the Action endpoint. Real slot times drift; this affects stream *duration* presentation, not correctness of payouts.
+- **Claim is permissionless** — anyone can crank it, but funds always flow to the stored recipient. This is intentional (enables future keeper layer).
 
 ## License
 

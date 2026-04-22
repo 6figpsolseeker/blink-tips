@@ -10,13 +10,28 @@ import {
 } from "@solana/web3.js";
 import { createHash } from "crypto";
 
-// Devnet USDC. For mainnet use EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v.
-export const USDC_MINT_DEVNET = new PublicKey(
+// Network is driven by the NETWORK env var; "mainnet" switches defaults for
+// USDC mint and (below) RPC URL. Default stays "devnet" so local work is safe.
+export const NETWORK = (process.env.NETWORK ?? "devnet").toLowerCase() as
+  | "mainnet"
+  | "devnet";
+
+const USDC_MINT_DEVNET = new PublicKey(
   "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
 );
+const USDC_MINT_MAINNET = new PublicKey(
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+);
+
+// USDC_MINT env var is an explicit override; otherwise picked from NETWORK.
+export const USDC_MINT = process.env.USDC_MINT
+  ? new PublicKey(process.env.USDC_MINT)
+  : NETWORK === "mainnet"
+    ? USDC_MINT_MAINNET
+    : USDC_MINT_DEVNET;
 
 export const KNOWN_TOKENS: Record<string, { mint: PublicKey; decimals: number; symbol: string }> = {
-  usdc: { mint: USDC_MINT_DEVNET, decimals: 6, symbol: "USDC" },
+  usdc: { mint: USDC_MINT, decimals: 6, symbol: "USDC" },
 };
 
 export function resolveToken(input: string | null | undefined) {
@@ -56,6 +71,23 @@ export class ProgramIdNotConfiguredError extends Error {
     );
     this.name = "ProgramIdNotConfiguredError";
   }
+}
+
+export class RpcNotConfiguredError extends Error {
+  constructor() {
+    super(
+      "RPC_URL is required when NETWORK=mainnet — public mainnet endpoints throttle hard. Set RPC_URL to a dedicated provider (Helius, Triton, QuickNode).",
+    );
+    this.name = "RpcNotConfiguredError";
+  }
+}
+
+// Returns the RPC URL, failing loudly on mainnet if none was set. Prevents
+// the silent footgun of building mainnet-signed txs against devnet blockhashes.
+export function getRpcUrl(): string {
+  if (process.env.RPC_URL) return process.env.RPC_URL;
+  if (NETWORK === "mainnet") throw new RpcNotConfiguredError();
+  return "https://api.devnet.solana.com";
 }
 
 // Solana target throughput — used to convert a human duration (days) into slots.
