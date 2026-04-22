@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-declare_id!("TipV1111111111111111111111111111111111111");
+declare_id!("F9GaSaT6KG1pwjRcnZvfmNMyEoxLHqe5MMVQFgvg6Kiw");
 
 #[program]
 pub mod tip_vault {

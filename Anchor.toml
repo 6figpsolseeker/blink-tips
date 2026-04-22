@@ -3,10 +3,10 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-tip_vault = "TipV1111111111111111111111111111111111111"
+tip_vault = "F9GaSaT6KG1pwjRcnZvfmNMyEoxLHqe5MMVQFgvg6Kiw"
 
 [programs.devnet]
-tip_vault = "TipV1111111111111111111111111111111111111"
+tip_vault = "F9GaSaT6KG1pwjRcnZvfmNMyEoxLHqe5MMVQFgvg6Kiw"
 
 [registry]
 url = "https://api.apr.dev"
