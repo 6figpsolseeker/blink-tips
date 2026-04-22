@@ -100,6 +100,19 @@ export async function GET(req: Request, { params }: Params) {
 }
 
 export async function POST(req: Request, { params }: Params) {
+  try {
+    return await postImpl(req, params);
+  } catch (err) {
+    console.error("[subscribe POST] unhandled", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    return jsonError(`Server error: ${msg.slice(0, 300)}`, 500);
+  }
+}
+
+async function postImpl(
+  req: Request,
+  params: Params["params"],
+): Promise<Response> {
   const { recipient: raw } = await params;
   const recipient = parseRecipient(raw);
   if (!recipient) return jsonError("Invalid recipient pubkey");
