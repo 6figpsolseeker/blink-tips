@@ -2,7 +2,8 @@
 
 import { Blink, useBlink } from "@dialectlabs/blinks";
 import { useBlinkSolanaWalletAdapter } from "@dialectlabs/blinks/hooks/solana";
-import { useEffect, useState } from "react";
+import { Connection } from "@solana/web3.js";
+import { useEffect, useMemo, useState } from "react";
 import "@dialectlabs/blinks/index.css";
 
 // Two-pass render so hooks that fetch (useBlink) don't run during SSR with
@@ -33,7 +34,18 @@ export function BlinkRender({
 }
 
 function BlinkInner({ url, rpcUrl }: { url: string; rpcUrl: string }) {
-  const { adapter } = useBlinkSolanaWalletAdapter(rpcUrl);
+  // Patient confirmation: default library behavior can race Phantom's own
+  // tx submission and flash "Transaction execution failed" even though the
+  // tx actually lands. 120s timeout + "confirmed" commitment avoids that.
+  const connection = useMemo(
+    () =>
+      new Connection(rpcUrl, {
+        commitment: "confirmed",
+        confirmTransactionInitialTimeout: 120_000,
+      }),
+    [rpcUrl],
+  );
+  const { adapter } = useBlinkSolanaWalletAdapter(connection);
   const { blink, isLoading } = useBlink({ url });
 
   if (isLoading) {
