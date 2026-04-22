@@ -5,6 +5,7 @@ import {
   createPostResponse,
 } from "@solana/actions";
 import {
+  ComputeBudgetProgram,
   Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
@@ -225,7 +226,14 @@ async function postImpl(
 
   const { blockhash } = await conn.getLatestBlockhash();
 
-  const tx = new Transaction({ feePayer: tipper, recentBlockhash: blockhash }).add(ix);
+  const tx = new Transaction({ feePayer: tipper, recentBlockhash: blockhash });
+  // SPL init creates up to two ATAs + allocates the TokenVault PDA + does a
+  // token transfer — that can crowd the default 200k CU limit. Bump to 400k
+  // for the token path; the SOL path is comfortably under 200k.
+  if (token && !vaultExists) {
+    tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }));
+  }
+  tx.add(ix);
 
   const response = await createPostResponse({
     fields: {
