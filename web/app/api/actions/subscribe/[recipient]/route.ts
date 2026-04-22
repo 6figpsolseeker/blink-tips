@@ -158,11 +158,18 @@ async function postImpl(
     ? tokenVaultPda(tipper, recipient, token.mint)[0]
     : vaultPda(tipper, recipient)[0];
 
+  // If the RPC lookup fails we must fail loudly — silently defaulting to
+  // "doesn't exist" would rebuild an init tx that then fails on-chain with
+  // "account already in use" for real re-subscribers.
   let vaultExists: boolean;
   try {
     vaultExists = (await conn.getAccountInfo(vaultAddress)) !== null;
-  } catch {
-    vaultExists = false;
+  } catch (err) {
+    console.error("[subscribe] vault existence check failed", err);
+    return jsonError(
+      "Couldn't verify vault state via the RPC. Please try again in a moment.",
+      503,
+    );
   }
 
   let ix;
