@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { BlinkGenerator } from "./components/BlinkGenerator";
 
-const GITHUB_URL = "https://github.com/6figpsolseeker/blink-tips";
-
 export default function Home() {
   return (
     <>
@@ -62,14 +60,6 @@ function Hero() {
           className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-muted"
         >
           Generate your Blink
-        </a>
-        <a
-          href={GITHUB_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-md border border-neutral-800 bg-neutral-950 px-4 py-2 text-sm text-neutral-200 transition hover:border-neutral-700 hover:text-white"
-        >
-          View source
         </a>
       </div>
     </section>
@@ -178,14 +168,6 @@ function UnderTheHood() {
             >
               Try GET /api/actions/subscribe
             </Link>
-            <a
-              href={`${GITHUB_URL}/blob/main/programs/tip-vault/src/lib.rs`}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-md border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-neutral-300 hover:border-neutral-700 hover:text-white"
-            >
-              Read the Anchor program
-            </a>
           </div>
         </div>
         <pre className="overflow-x-auto rounded-xl border border-neutral-900 bg-black/50 p-4 text-[11px] leading-relaxed text-neutral-300">
@@ -202,14 +184,6 @@ function Footer() {
       <div className="mx-auto flex max-w-3xl flex-col items-start justify-between gap-3 px-6 py-8 text-xs text-neutral-500 sm:flex-row sm:items-center">
         <div>MIT licensed · devnet only · not audited</div>
         <div className="flex items-center gap-4">
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-neutral-200"
-          >
-            GitHub
-          </a>
           <a
             href="https://docs.dialect.to/documentation/actions"
             target="_blank"
