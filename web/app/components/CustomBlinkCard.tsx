@@ -3,7 +3,7 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Transaction, VersionedTransaction } from "@solana/web3.js";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type Parameter = {
   name: string;
@@ -61,6 +61,9 @@ export function CustomBlinkCard({ url }: { url: string }) {
   const [inputs, setInputs] = useState<Record<string, Record<string, string>>>({});
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [busyIdx, setBusyIdx] = useState<number | null>(null);
+  // Synchronous lock so two rapid clicks can't start parallel flows before
+  // setBusyIdx's state update reaches the next render.
+  const inFlight = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -81,7 +84,13 @@ export function CustomBlinkCard({ url }: { url: string }) {
   }, [url]);
 
   const handleClick = async (preset: ActionPreset, idx: number) => {
+    // Ref-based mutex: blocks parallel invocations even within the same
+    // render tick. setBusyIdx's state update only takes effect on the next
+    // render, which is too late if a user double-taps.
+    if (inFlight.current) return;
+    inFlight.current = true;
     if (!publicKey || !signTransaction) {
+      inFlight.current = false;
       setWalletModalVisible(true);
       return;
     }
@@ -99,6 +108,7 @@ export function CustomBlinkCard({ url }: { url: string }) {
       for (const p of preset.parameters) {
         if (p.required && !values[p.name]) {
           setStatus({ kind: "error", message: `Missing: ${p.label ?? p.name}` });
+          inFlight.current = false;
           return;
         }
       }
@@ -261,6 +271,7 @@ export function CustomBlinkCard({ url }: { url: string }) {
       setStatus({ kind: "error", message: msg });
     } finally {
       setBusyIdx(null);
+      inFlight.current = false;
     }
   };
 
