@@ -85,6 +85,10 @@ export function CustomBlinkCard({ url }: { url: string }) {
       setWalletModalVisible(true);
       return;
     }
+    // Snapshot the connected account at the start of the flow. If the user
+    // changes wallets (or disconnects) mid-flow, we bail instead of signing
+    // a tx that was built for a different account.
+    const submitAccount = publicKey;
 
     const values = inputs[String(idx)] ?? {};
     if (preset.parameters) {
@@ -106,7 +110,7 @@ export function CustomBlinkCard({ url }: { url: string }) {
       const res = await fetch(absolute, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ account: publicKey.toBase58() }),
+        body: JSON.stringify({ account: submitAccount.toBase58() }),
       });
       if (!res.ok) {
         const text = await res.text();
@@ -140,9 +144,14 @@ export function CustomBlinkCard({ url }: { url: string }) {
         tx instanceof VersionedTransaction
           ? tx.message.staticAccountKeys[0]
           : tx.feePayer ?? null;
-      if (!feePayer || !feePayer.equals(publicKey)) {
+      if (!feePayer || !feePayer.equals(submitAccount)) {
         throw new Error(
           "Transaction feePayer does not match the connected wallet — refusing to sign.",
+        );
+      }
+      if (!publicKey || !publicKey.equals(submitAccount)) {
+        throw new Error(
+          "Wallet changed mid-flow — please click again from the new wallet.",
         );
       }
 
