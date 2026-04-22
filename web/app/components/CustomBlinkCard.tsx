@@ -124,6 +124,15 @@ export function CustomBlinkCard({ url }: { url: string }) {
         tx = Transaction.from(bytes);
       }
 
+      // Refresh the blockhash just before signing so a slow wallet click
+      // doesn't hit "Blockhash not found". VersionedTransaction message is
+      // immutable, so we only do this on the legacy path.
+      if (tx instanceof Transaction) {
+        const fresh = await connection.getLatestBlockhash("confirmed");
+        tx.recentBlockhash = fresh.blockhash;
+        tx.lastValidBlockHeight = fresh.lastValidBlockHeight;
+      }
+
       setStatus({ kind: "working", phase: "sign", label: preset.label });
       const signed = await signTransaction(tx);
 
