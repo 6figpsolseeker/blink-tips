@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BlinkGenerator } from "./components/BlinkGenerator";
 import { Leaderboard } from "./components/Leaderboard";
+import { WalletBadge } from "./components/WalletBadge";
 
 export default function Home() {
   return (
@@ -59,6 +60,7 @@ function Header() {
         <a href="/inbox" className="hover:text-neutral-100">
           Inbox
         </a>
+        <WalletBadge />
       </nav>
     </header>
   );

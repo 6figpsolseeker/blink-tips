@@ -1,6 +1,15 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { AppProviders } from "./components/AppProviders";
+
+function resolveRpcUrl(): string {
+  if (process.env.RPC_URL) return process.env.RPC_URL;
+  const network = (process.env.NETWORK ?? "devnet").toLowerCase();
+  return network === "mainnet"
+    ? "https://api.mainnet-beta.solana.com"
+    : "https://api.devnet.solana.com";
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://blinktips.xyz"),
@@ -15,9 +24,12 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const rpcUrl = resolveRpcUrl();
   return (
     <html lang="en">
-      <body className="min-h-screen font-sans antialiased">{children}</body>
+      <body className="min-h-screen font-sans antialiased">
+        <AppProviders rpcUrl={rpcUrl}>{children}</AppProviders>
+      </body>
     </html>
   );
 }

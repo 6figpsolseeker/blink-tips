@@ -2,22 +2,13 @@
 
 import dynamic from "next/dynamic";
 
-const Providers = dynamic(
-  () =>
-    import("@/app/components/SolanaProviders").then((m) => ({
-      default: m.SolanaProviders,
-    })),
-  { ssr: false },
-);
+// Client-only because InboxClient uses wallet hooks + window. Providers are
+// already wrapped at the root layout; no need to re-wrap here.
 const InboxClient = dynamic(
   () => import("./InboxClient").then((m) => ({ default: m.InboxClient })),
   { ssr: false },
 );
 
-export function InboxWrapper({ rpcUrl }: { rpcUrl: string }) {
-  return (
-    <Providers rpcUrl={rpcUrl}>
-      <InboxClient />
-    </Providers>
-  );
+export function InboxWrapper() {
+  return <InboxClient />;
 }

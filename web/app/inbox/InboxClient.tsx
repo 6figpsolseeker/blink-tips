@@ -2,7 +2,8 @@
 
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ClaimButton } from "./ClaimButton";
 
 type Message = {
   id: string;
@@ -17,13 +18,32 @@ type Message = {
   createdAt: number;
 };
 
+type Vault = {
+  address: string;
+  type: "sol" | "token";
+  tipper: string;
+  mint?: string;
+  ratePerSlot: string;
+  lastClaimSlot: string;
+  totalClaimed: string;
+  currentLamports?: string;
+};
+
+const LAMPORTS_PER_SOL = 1_000_000_000n;
+
 function short(s: string) {
   return `${s.slice(0, 4)}…${s.slice(-4)}`;
 }
 
+function lamportsToSol(raw: string): string {
+  const n = BigInt(raw);
+  const whole = Number(n / LAMPORTS_PER_SOL);
+  const frac = Number(n - (n / LAMPORTS_PER_SOL) * LAMPORTS_PER_SOL) / 1e9;
+  return (whole + frac).toLocaleString(undefined, { maximumFractionDigits: 6 });
+}
+
 function formatTime(ms: number): string {
-  const d = new Date(ms);
-  return d.toLocaleString(undefined, {
+  return new Date(ms).toLocaleString(undefined, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -35,34 +55,50 @@ export function InboxClient() {
   const { publicKey, connected } = useWallet();
   const { setVisible } = useWalletModal();
   const [msgs, setMsgs] = useState<Message[] | null>(null);
+  const [vaults, setVaults] = useState<Vault[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async (pk: string) => {
+    setError(null);
+    const [m, v] = await Promise.all([
+      fetch(`/api/messages?recipient=${pk}`)
+        .then((r) => r.json())
+        .catch(() => ({ messages: [] })),
+      fetch(`/api/my-vaults?recipient=${pk}`)
+        .then((r) => r.json())
+        .catch(() => ({ vaults: [] })),
+    ]);
+    setMsgs(m.messages ?? []);
+    setVaults(v.vaults ?? []);
+    if (m.message) setError(m.message);
+    if (v.error) setError(v.error);
+  }, []);
 
   useEffect(() => {
     if (!publicKey) {
       setMsgs(null);
+      setVaults(null);
       return;
     }
     let alive = true;
+    const pk = publicKey.toBase58();
     setMsgs(null);
-    setError(null);
-    fetch(`/api/messages?recipient=${publicKey.toBase58()}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!alive) return;
-        if (d.message) setError(d.message);
-        else setMsgs(d.messages ?? []);
-      })
-      .catch((e) => alive && setError(String(e)));
+    setVaults(null);
+    load(pk).catch((e) => alive && setError(String(e)));
     return () => {
       alive = false;
     };
-  }, [publicKey]);
+  }, [publicKey, load]);
 
-  if (!connected) {
+  const refresh = useCallback(() => {
+    if (publicKey) void load(publicKey.toBase58());
+  }, [publicKey, load]);
+
+  if (!connected || !publicKey) {
     return (
       <div className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-6">
         <p className="text-sm text-neutral-400">
-          Connect a wallet to read messages sent to that address.
+          Connect a wallet to see your vaults and messages.
         </p>
         <button
           type="button"
@@ -83,71 +119,180 @@ export function InboxClient() {
     );
   }
 
-  if (msgs === null) {
-    return (
-      <div className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-6 text-sm text-neutral-400">
-        Loading messages…
-      </div>
-    );
-  }
-
-  if (msgs.length === 0) {
-    return (
-      <div className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-6 text-sm text-neutral-400">
-        No messages yet. Share your tip link to receive your first note.
-      </div>
-    );
-  }
+  const loading = msgs === null || vaults === null;
 
   return (
-    <div className="flex flex-col gap-3">
-      {msgs.map((m) => (
-        <div
-          key={m.id}
-          className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-4"
-        >
-          <div className="flex items-center justify-between text-xs text-neutral-500">
-            <span className="font-mono">
-              {m.anonymous
-                ? "Anonymous"
-                : (m.displayName ?? short(m.tipper))}
-              {!m.anonymous && m.displayName && (
-                <span className="ml-2 text-neutral-600">({short(m.tipper)})</span>
-              )}
-            </span>
-            <span>{formatTime(m.createdAt)}</span>
+    <div className="flex flex-col gap-10">
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xs uppercase tracking-widest text-neutral-500">
+            Your vaults
+          </h2>
+          <span className="text-xs text-neutral-600">
+            {loading ? "…" : `${vaults!.length} open`}
+          </span>
+        </div>
+        {loading ? (
+          <div className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-4 text-sm text-neutral-500">
+            Loading vaults…
           </div>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-100">
-            {m.text}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-            {m.amount && (
-              <span className="rounded-md border border-neutral-800 px-2 py-0.5 font-mono">
-                {m.amount}{" "}
-                {!m.mint || m.mint === "SOL" ? "SOL" : m.mint.toUpperCase()}
-              </span>
-            )}
-            {m.txSignature && (
-              <a
-                href={`https://solscan.io/tx/${m.txSignature}`}
-                target="_blank"
-                rel="noreferrer"
-                className="underline hover:text-neutral-200"
-              >
-                tx
-              </a>
-            )}
-            {!m.anonymous && (
-              <a
-                href={`/claim/${m.tipper}/${m.recipient}`}
-                className="underline hover:text-neutral-200"
-              >
-                claim from this tipper
-              </a>
-            )}
+        ) : vaults!.length === 0 ? (
+          <div className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-4 text-sm text-neutral-500">
+            No vaults yet. Share your tip link to receive your first subscription.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {vaults!.map((v) => (
+              <VaultRow
+                key={v.address}
+                vault={v}
+                recipient={publicKey.toBase58()}
+                onClaimed={refresh}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xs uppercase tracking-widest text-neutral-500">
+            Messages
+          </h2>
+          <span className="text-xs text-neutral-600">
+            {loading ? "…" : `${msgs!.length}`}
+          </span>
+        </div>
+        {loading ? (
+          <div className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-4 text-sm text-neutral-500">
+            Loading messages…
+          </div>
+        ) : msgs!.length === 0 ? (
+          <div className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-4 text-sm text-neutral-500">
+            No messages yet.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {msgs!.map((m) => (
+              <MessageRow
+                key={m.id}
+                message={m}
+                onClaimed={refresh}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function VaultRow({
+  vault,
+  recipient,
+  onClaimed,
+}: {
+  vault: Vault;
+  recipient: string;
+  onClaimed: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="font-mono text-xs text-neutral-400">
+          from {short(vault.tipper)}
+          {vault.type === "token" && vault.mint && (
+            <span className="ml-2 rounded bg-neutral-900 px-1.5 py-0.5 text-[10px] text-neutral-500">
+              {vault.mint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+                ? "USDC"
+                : short(vault.mint)}
+            </span>
+          )}
+        </div>
+        <ClaimButton
+          tipper={vault.tipper}
+          recipient={recipient}
+          onSuccess={onClaimed}
+        />
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-3 text-xs text-neutral-500 sm:grid-cols-3">
+        <div>
+          <div className="text-neutral-600">Total claimed</div>
+          <div className="mt-0.5 font-mono text-neutral-200">
+            {vault.type === "sol"
+              ? `${lamportsToSol(vault.totalClaimed)} SOL`
+              : vault.totalClaimed}
           </div>
         </div>
-      ))}
+        <div>
+          <div className="text-neutral-600">Rate / slot</div>
+          <div className="mt-0.5 font-mono text-neutral-200">{vault.ratePerSlot}</div>
+        </div>
+        {vault.currentLamports && (
+          <div>
+            <div className="text-neutral-600">In vault</div>
+            <div className="mt-0.5 font-mono text-neutral-200">
+              {lamportsToSol(vault.currentLamports)} SOL
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MessageRow({
+  message,
+  onClaimed,
+}: {
+  message: Message;
+  onClaimed: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-4">
+      <div className="flex items-center justify-between text-xs text-neutral-500">
+        <span className="font-mono">
+          {message.anonymous
+            ? "Anonymous"
+            : (message.displayName ?? short(message.tipper))}
+          {!message.anonymous && message.displayName && (
+            <span className="ml-2 text-neutral-600">
+              ({short(message.tipper)})
+            </span>
+          )}
+        </span>
+        <span>{formatTime(message.createdAt)}</span>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-100">
+        {message.text}
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
+        {message.amount && (
+          <span className="rounded-md border border-neutral-800 px-2 py-0.5 font-mono">
+            {message.amount}{" "}
+            {!message.mint || message.mint === "SOL"
+              ? "SOL"
+              : message.mint.toUpperCase()}
+          </span>
+        )}
+        {message.txSignature && (
+          <a
+            href={`https://solscan.io/tx/${message.txSignature}`}
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-neutral-200"
+          >
+            tx
+          </a>
+        )}
+        {!message.anonymous && (
+          <ClaimButton
+            tipper={message.tipper}
+            recipient={message.recipient}
+            onSuccess={onClaimed}
+          />
+        )}
+      </div>
     </div>
   );
 }
