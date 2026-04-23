@@ -56,6 +56,9 @@ function Header() {
         <a href="#generate" className="hover:text-neutral-100">
           Generate
         </a>
+        <a href="/inbox" className="hover:text-neutral-100">
+          Inbox
+        </a>
       </nav>
     </header>
   );

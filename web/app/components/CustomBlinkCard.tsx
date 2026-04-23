@@ -3,7 +3,7 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Transaction, VersionedTransaction } from "@solana/web3.js";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 type Parameter = {
   name: string;
@@ -69,6 +69,25 @@ export function CustomBlinkCard({ url }: { url: string }) {
   // Synchronous lock so two rapid clicks can't start parallel flows before
   // setBusyIdx's state update reaches the next render.
   const inFlight = useRef(false);
+
+  // Message-with-tip state (all optional). Only shown on subscribe URLs;
+  // claim has no "message" (the recipient is just pulling funds).
+  const [messageText, setMessageText] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
+  const { isSubscribe, recipientFromUrl } = useMemo(() => {
+    try {
+      const u = new URL(url, "http://x");
+      const parts = u.pathname.split("/").filter(Boolean);
+      const sub = parts[2] === "subscribe";
+      return {
+        isSubscribe: sub,
+        recipientFromUrl: sub ? (parts[3] ?? null) : null,
+      };
+    } catch {
+      return { isSubscribe: false, recipientFromUrl: null };
+    }
+  }, [url]);
 
   useEffect(() => {
     let alive = true;
@@ -253,6 +272,27 @@ export function CustomBlinkCard({ url }: { url: string }) {
         signature,
         message: json.message ?? "Transaction confirmed.",
       });
+
+      // Fire-and-forget: attach the tipper's message to the recipient's
+      // off-chain inbox, keyed by the tx signature. We don't await on the
+      // critical path — tx is already confirmed and that's what matters.
+      const trimmedText = messageText.trim();
+      if (isSubscribe && recipientFromUrl && trimmedText) {
+        void fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipient: recipientFromUrl,
+            tipper: submitAccount.toBase58(),
+            text: trimmedText,
+            displayName: anonymous ? null : displayName.trim() || null,
+            anonymous,
+            txSignature: signature,
+            amount: values.amount ?? null,
+            mint: null, // preset doesn't easily carry token id here; fine for MVP
+          }),
+        }).catch((e) => console.warn("[blink] message post failed", e));
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       // Silently reset on wallet rejection — the user pressed "Cancel",
@@ -320,6 +360,17 @@ export function CustomBlinkCard({ url }: { url: string }) {
           Connect wallet to tip
         </button>
       ) : (
+        <>
+        {isSubscribe && (
+          <MessageForm
+            text={messageText}
+            onText={setMessageText}
+            name={displayName}
+            onName={setDisplayName}
+            anonymous={anonymous}
+            onAnonymous={setAnonymous}
+          />
+        )}
         <div className="flex flex-col gap-3">
           {meta.links?.actions.map((preset, idx) => (
             <PresetRow
@@ -344,6 +395,7 @@ export function CustomBlinkCard({ url }: { url: string }) {
             />
           ))}
         </div>
+        </>
       )}
 
       {(status.kind === "success" || status.kind === "error") && (
@@ -357,6 +409,66 @@ function Card({ children }: { children: ReactNode }) {
   return (
     <div className="rounded-xl border border-neutral-900 bg-neutral-950/60 p-5">
       {children}
+    </div>
+  );
+}
+
+const MAX_MESSAGE = 280;
+
+function MessageForm({
+  text,
+  onText,
+  name,
+  onName,
+  anonymous,
+  onAnonymous,
+}: {
+  text: string;
+  onText: (s: string) => void;
+  name: string;
+  onName: (s: string) => void;
+  anonymous: boolean;
+  onAnonymous: (b: boolean) => void;
+}) {
+  const remaining = MAX_MESSAGE - text.length;
+  return (
+    <div className="mb-4 rounded-md border border-neutral-900 bg-black/30 p-3">
+      <div className="flex items-center justify-between">
+        <label className="text-xs text-neutral-400">Message (optional)</label>
+        <span
+          className={`text-[10px] tabular-nums ${
+            remaining < 0 ? "text-red-400" : "text-neutral-600"
+          }`}
+        >
+          {remaining}
+        </span>
+      </div>
+      <textarea
+        value={text}
+        onChange={(e) => onText(e.target.value.slice(0, MAX_MESSAGE))}
+        rows={2}
+        placeholder="Add a note to the recipient — visible on their inbox."
+        className="mt-1 w-full resize-none rounded-md border border-neutral-800 bg-black/40 px-3 py-2 text-sm text-neutral-200 outline-none placeholder:text-neutral-600 focus:border-accent/60 focus:ring-2 focus:ring-accent/30"
+      />
+      <div className="mt-3 flex items-center gap-2">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => onName(e.target.value.slice(0, 40))}
+          disabled={anonymous}
+          placeholder="Display name"
+          className="flex-1 rounded-md border border-neutral-800 bg-black/40 px-3 py-2 text-xs text-neutral-200 outline-none placeholder:text-neutral-600 focus:border-accent/60 focus:ring-2 focus:ring-accent/30 disabled:opacity-40"
+        />
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-neutral-400">
+          <input
+            type="checkbox"
+            checked={anonymous}
+            onChange={(e) => onAnonymous(e.target.checked)}
+            className="h-3.5 w-3.5 accent-accent"
+          />
+          Anonymous
+        </label>
+      </div>
     </div>
   );
 }

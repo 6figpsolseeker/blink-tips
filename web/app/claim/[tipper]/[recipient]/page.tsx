@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { ClaimClient } from "./ClaimClient";
+import { TipperMessages } from "./TipperMessages";
 
 type Props = { params: Promise<{ tipper: string; recipient: string }> };
 
@@ -37,6 +38,7 @@ export default async function ClaimPage({ params }: Props) {
           <p className="mb-6 text-sm text-neutral-500">
             to {short(recipient)}
           </p>
+          <TipperMessages tipper={tipper} recipient={recipient} />
           <ClaimClient url={actionUrl} rpcUrl={rpcUrl} />
           <p className="mt-4 text-xs text-neutral-500">
             Claim is permissionless — any wallet can crank it and funds still
