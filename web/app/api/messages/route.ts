@@ -1,5 +1,6 @@
-import { PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { messageRatelimit, redis } from "@/app/lib/redis";
+import { getProgramId, getRpcUrl } from "@/app/lib/tip-vault";
 
 type Stored = {
   id: string;
@@ -84,6 +85,51 @@ export async function POST(req: Request) {
       typeof body.txSignature === "string" && body.txSignature.length > 0
         ? body.txSignature.slice(0, 128)
         : null;
+    // Base58 signatures are 87-88 chars, A-Za-z1-9 only — cheap pre-filter
+    // before hitting RPC.
+    if (!txSignature || !/^[1-9A-HJ-NP-Za-km-z]{80,128}$/.test(txSignature)) {
+      return jsonError("Message must include the tx signature that proves the tip");
+    }
+
+    // Verify the signature actually exists on-chain, was signed by the claimed
+    // tipper, and references our program. This closes the "anyone can forge a
+    // message as anyone else" vector.
+    try {
+      const conn = new Connection(getRpcUrl(), "confirmed");
+      const tx = await conn.getTransaction(txSignature, {
+        maxSupportedTransactionVersion: 0,
+        commitment: "confirmed",
+      });
+      if (!tx) {
+        return jsonError(
+          "Transaction not yet confirmed on-chain — try again in a moment.",
+          409,
+        );
+      }
+      const message = tx.transaction.message;
+      // Both legacy and v0 messages expose either staticAccountKeys or accountKeys.
+      const keys =
+        "staticAccountKeys" in message
+          ? (message.staticAccountKeys as PublicKey[])
+          : (message as { accountKeys: PublicKey[] }).accountKeys;
+      const numSigners = message.header.numRequiredSignatures;
+      const signers = keys.slice(0, numSigners);
+      if (!signers.some((k) => k.equals(tipper))) {
+        return jsonError(
+          "The provided tipper did not sign the referenced transaction.",
+          403,
+        );
+      }
+      if (!keys.some((k) => k.equals(getProgramId()))) {
+        return jsonError(
+          "Referenced transaction is not a blink-tips transaction.",
+          403,
+        );
+      }
+    } catch (verifyErr) {
+      console.error("[messages POST] on-chain verify failed", verifyErr);
+      return jsonError("Could not verify transaction right now.", 502);
+    }
 
     const amount =
       typeof body.amount === "string" && body.amount.length <= 32
