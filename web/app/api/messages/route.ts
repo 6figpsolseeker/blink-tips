@@ -1,5 +1,5 @@
 import { Connection, PublicKey } from "@solana/web3.js";
-import { messageRatelimit, redis } from "@/app/lib/redis";
+import { getMessageRatelimit, getRedis } from "@/app/lib/redis";
 import { getProgramId, getRpcUrl } from "@/app/lib/tip-vault";
 
 type Stored = {
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   try {
     // Per-IP rate limit first — cheap guard before touching body.
     const ip = clientIp(req);
-    const { success } = await messageRatelimit.limit(ip);
+    const { success } = await getMessageRatelimit().limit(ip);
     if (!success) return jsonError("Too many messages. Try again in a minute.", 429);
 
     const body = (await req.json()) as Partial<Stored>;
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
       createdAt: now,
     };
 
-    await redis.zadd(keyFor(stored.recipient), {
+    await getRedis().zadd(keyFor(stored.recipient), {
       score: now,
       member: JSON.stringify(stored),
     });
@@ -177,7 +177,7 @@ export async function GET(req: Request) {
 
     // Newest first, cap at 200 per request — pagination can come later if we
     // ever approach that volume per recipient.
-    const raws = await redis.zrange<string[]>(
+    const raws = await getRedis().zrange<string[]>(
       keyFor(recipient.toBase58()),
       0,
       199,

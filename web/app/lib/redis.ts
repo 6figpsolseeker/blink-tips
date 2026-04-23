@@ -1,25 +1,37 @@
 import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 
-// Upstash's `Redis.fromEnv()` only `console.warn`s on missing credentials
-// and returns a broken client, so the real failure shows up deep inside the
-// first request as an opaque error. Fail fast + loud at module load instead.
-const url = process.env.UPSTASH_REDIS_REST_URL;
-const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-if (!url || !token) {
-  throw new Error(
-    "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set. " +
-      "Provision a free Upstash Redis DB and populate both env vars in Vercel.",
-  );
+// Lazy-initialize so local `next build` (where env may be unset) doesn't
+// throw during page-data collection. First real use still throws loudly
+// with a readable error — much better than Upstash's silent console.warn.
+
+let _redis: Redis | null = null;
+let _ratelimit: Ratelimit | null = null;
+
+function init() {
+  if (_redis && _ratelimit) return { redis: _redis, ratelimit: _ratelimit };
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
+    throw new Error(
+      "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set. " +
+        "Provision a free Upstash Redis DB and populate both env vars in Vercel.",
+    );
+  }
+  _redis = new Redis({ url, token });
+  _ratelimit = new Ratelimit({
+    redis: _redis,
+    limiter: Ratelimit.slidingWindow(10, "60 s"),
+    analytics: false,
+    prefix: "rl:msg",
+  });
+  return { redis: _redis, ratelimit: _ratelimit };
 }
 
-export const redis = new Redis({ url, token });
+export function getRedis(): Redis {
+  return init().redis;
+}
 
-// Cap message-post abuse: 10 writes per minute per IP is plenty for honest
-// use and brutal enough to stop spammers.
-export const messageRatelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(10, "60 s"),
-  analytics: false,
-  prefix: "rl:msg",
-});
+export function getMessageRatelimit(): Ratelimit {
+  return init().ratelimit;
+}
