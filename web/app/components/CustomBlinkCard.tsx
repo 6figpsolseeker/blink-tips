@@ -278,6 +278,20 @@ export function CustomBlinkCard({ url }: { url: string }) {
       // critical path — tx is already confirmed and that's what matters.
       const trimmedText = messageText.trim();
       if (isSubscribe && recipientFromUrl && trimmedText) {
+        // The preset href already embeds amount + days + (optional) token,
+        // so pull them from there rather than relying on form state that
+        // only exists for the Custom preset.
+        let amountParam: string | null = null;
+        let mintLabel = "SOL";
+        try {
+          const builtFull = new URL(absolute);
+          amountParam =
+            builtFull.searchParams.get("amount") ?? values.amount ?? null;
+          const tok = builtFull.searchParams.get("token");
+          mintLabel = tok ? tok.toUpperCase() : "SOL";
+        } catch {
+          amountParam = values.amount ?? null;
+        }
         void fetch("/api/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -288,8 +302,8 @@ export function CustomBlinkCard({ url }: { url: string }) {
             displayName: anonymous ? null : displayName.trim() || null,
             anonymous,
             txSignature: signature,
-            amount: values.amount ?? null,
-            mint: null, // preset doesn't easily carry token id here; fine for MVP
+            amount: amountParam,
+            mint: mintLabel,
           }),
         }).catch((e) => console.warn("[blink] message post failed", e));
       }

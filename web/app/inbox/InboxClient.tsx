@@ -123,8 +123,8 @@ export function InboxClient() {
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
             {m.amount && (
               <span className="rounded-md border border-neutral-800 px-2 py-0.5 font-mono">
-                {m.amount}
-                {m.mint && m.mint !== "SOL" ? "" : " SOL"}
+                {m.amount}{" "}
+                {!m.mint || m.mint === "SOL" ? "SOL" : m.mint.toUpperCase()}
               </span>
             )}
             {m.txSignature && (

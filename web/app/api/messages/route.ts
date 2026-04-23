@@ -142,7 +142,12 @@ export async function POST(req: Request) {
     const id = crypto.randomUUID();
     const stored: Stored = {
       id,
-      tipper: tipper.toBase58(),
+      // When anonymous we've already verified the tx above but we don't
+      // persist the tipper pubkey — the whole point of anonymity is that the
+      // recipient can't see who sent the message. Side effect: anonymous
+      // messages can't appear on /claim/<tipper>/<recipient> (no tipper to
+      // filter on), only in the recipient's inbox.
+      tipper: anonymous ? "" : tipper.toBase58(),
       recipient: recipient.toBase58(),
       text,
       displayName,
