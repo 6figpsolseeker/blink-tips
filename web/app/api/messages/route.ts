@@ -176,10 +176,13 @@ export async function POST(req: Request) {
       createdAt: now,
     };
 
-    await getRedis().zadd(keyFor(stored.recipient), {
-      score: now,
-      member: JSON.stringify(stored),
-    });
+    const payload = JSON.stringify(stored);
+    const r = getRedis();
+    await r.zadd(keyFor(stored.recipient), { score: now, member: payload });
+    // Mirror into the global feed for the public toast, then trim to the
+    // newest 200 so the key doesn't grow unbounded.
+    await r.zadd("msgs:feed:global", { score: now, member: payload });
+    await r.zremrangebyrank("msgs:feed:global", 0, -201);
 
     return Response.json({ message: stored }, { headers: corsHeaders });
   } catch (err) {

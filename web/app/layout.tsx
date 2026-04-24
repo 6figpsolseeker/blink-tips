@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AppProviders } from "./components/AppProviders";
+import { TipFeedToast } from "./components/TipFeedToast";
 
 function resolveRpcUrl(): string {
   if (process.env.RPC_URL) return process.env.RPC_URL;
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body className="min-h-screen font-sans antialiased">
         <AppProviders rpcUrl={rpcUrl}>{children}</AppProviders>
+        <TipFeedToast />
       </body>
     </html>
   );
