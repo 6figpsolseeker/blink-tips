@@ -35,6 +35,10 @@ const FADE_MS = 500;
 // Idle gap before cycling another backlog message. New messages skip this —
 // they show immediately after the current toast clears.
 const BACKLOG_IDLE_MS = 2_000;
+// Cap the in-memory backlog. Server-side msgs:feed:global is trimmed to 200
+// too; this prevents long-lived tabs from accumulating unbounded IDs as the
+// server rotates its window over hours.
+const MAX_BACKLOG = 200;
 
 export function TipFeedToast() {
   // Unseen-this-session new messages — always shown before anything else.
@@ -75,7 +79,12 @@ export function TipFeedToast() {
           }
         }
         if (newlyDiscovered.length > 0) {
-          setBacklog((b) => [...b, ...newlyDiscovered]);
+          setBacklog((b) => {
+            const merged = [...b, ...newlyDiscovered];
+            return merged.length > MAX_BACKLOG
+              ? merged.slice(merged.length - MAX_BACKLOG)
+              : merged;
+          });
         }
         if (trulyNew.length > 0) {
           setNewQueue((q) => [...q, ...trulyNew]);
@@ -155,7 +164,7 @@ export function TipFeedToast() {
             <span className="font-mono text-accent">{amountLabel}</span>
           )}
         </div>
-        <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-sm text-neutral-100">
+        <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-sm text-neutral-100">
           {msg.text}
         </p>
         <div className="mt-1 flex items-center justify-between text-xs text-neutral-500">

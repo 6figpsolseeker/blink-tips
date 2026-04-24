@@ -177,12 +177,15 @@ export async function POST(req: Request) {
     };
 
     const payload = JSON.stringify(stored);
-    const r = getRedis();
-    await r.zadd(keyFor(stored.recipient), { score: now, member: payload });
-    // Mirror into the global feed for the public toast, then trim to the
-    // newest 200 so the key doesn't grow unbounded.
-    await r.zadd("msgs:feed:global", { score: now, member: payload });
-    await r.zremrangebyrank("msgs:feed:global", 0, -201);
+    // Pipeline the three writes: recipient inbox, global feed mirror, and
+    // the global-feed trim. One round-trip instead of three, and if the
+    // request dies mid-flight the server either commits all or none of
+    // them (versus partial writes across sequential awaits).
+    const pipe = getRedis().multi();
+    pipe.zadd(keyFor(stored.recipient), { score: now, member: payload });
+    pipe.zadd("msgs:feed:global", { score: now, member: payload });
+    pipe.zremrangebyrank("msgs:feed:global", 0, -201);
+    await pipe.exec();
 
     return Response.json({ message: stored }, { headers: corsHeaders });
   } catch (err) {
