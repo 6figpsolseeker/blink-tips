@@ -292,10 +292,11 @@ export function CustomBlinkCard({ url }: { url: string }) {
         } catch {
           amountParam = values.amount ?? null;
         }
-        void fetch("/api/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        // Retry on 409 — the backend returns 409 when getTransaction hasn't
+        // indexed the just-confirmed signature yet. One fire-and-forget
+        // attempt with a couple retries usually lands within ~5s of confirm.
+        void (async () => {
+          const body = JSON.stringify({
             recipient: recipientFromUrl,
             tipper: submitAccount.toBase58(),
             text: trimmedText,
@@ -304,8 +305,22 @@ export function CustomBlinkCard({ url }: { url: string }) {
             txSignature: signature,
             amount: amountParam,
             mint: mintLabel,
-          }),
-        }).catch((e) => console.warn("[blink] message post failed", e));
+          });
+          for (let attempt = 0; attempt < 4; attempt += 1) {
+            try {
+              const res = await fetch("/api/messages", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body,
+              });
+              if (res.status !== 409) return;
+            } catch (e) {
+              console.warn("[blink] message post failed", e);
+              return;
+            }
+            await sleep(2000 * (attempt + 1)); // 2s, 4s, 6s, 8s
+          }
+        })();
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

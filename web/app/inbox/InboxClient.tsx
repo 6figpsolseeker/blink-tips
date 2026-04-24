@@ -36,10 +36,14 @@ function short(s: string) {
 }
 
 function lamportsToSol(raw: string): string {
+  // Work in BigInt for the integer part and only cast the sub-lamport
+  // remainder to Number — casting (n / LAMPORTS_PER_SOL) directly can
+  // truncate for values over 2^53.
   const n = BigInt(raw);
-  const whole = Number(n / LAMPORTS_PER_SOL);
-  const frac = Number(n - (n / LAMPORTS_PER_SOL) * LAMPORTS_PER_SOL) / 1e9;
-  return (whole + frac).toLocaleString(undefined, { maximumFractionDigits: 6 });
+  const whole = n / LAMPORTS_PER_SOL;
+  const frac = n % LAMPORTS_PER_SOL;
+  const fracStr = frac.toString().padStart(9, "0").slice(0, 6).replace(/0+$/, "");
+  return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
 }
 
 function formatTime(ms: number): string {
@@ -58,21 +62,45 @@ export function InboxClient() {
   const [vaults, setVaults] = useState<Vault[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (pk: string) => {
-    setError(null);
-    const [m, v] = await Promise.all([
-      fetch(`/api/messages?recipient=${pk}`)
-        .then((r) => r.json())
-        .catch(() => ({ messages: [] })),
-      fetch(`/api/my-vaults?recipient=${pk}`)
-        .then((r) => r.json())
-        .catch(() => ({ vaults: [] })),
-    ]);
-    setMsgs(m.messages ?? []);
-    setVaults(v.vaults ?? []);
-    if (m.message) setError(m.message);
-    if (v.error) setError(v.error);
-  }, []);
+  const load = useCallback(
+    async (pk: string, isAlive: () => boolean) => {
+      // Surface real failures instead of silently falling back to empty
+      // lists — previously a two-endpoint-down outage looked the same as
+      // a brand-new recipient with no activity.
+      const fetchOrLabel = async (
+        url: string,
+        label: string,
+      ): Promise<{ data: unknown; err: string | null }> => {
+        try {
+          const r = await fetch(url);
+          if (!r.ok) return { data: null, err: `${label}: HTTP ${r.status}` };
+          return { data: await r.json(), err: null };
+        } catch (e) {
+          return { data: null, err: `${label}: ${e instanceof Error ? e.message : String(e)}` };
+        }
+      };
+
+      const [m, v] = await Promise.all([
+        fetchOrLabel(`/api/messages?recipient=${pk}`, "messages"),
+        fetchOrLabel(`/api/my-vaults?recipient=${pk}`, "vaults"),
+      ]);
+      if (!isAlive()) return;
+
+      const errs: string[] = [];
+      if (m.err) errs.push(m.err);
+      if (v.err) errs.push(v.err);
+      // Endpoint-level errors returned in body (e.g. 503 with {error})
+      const mBody = (m.data ?? {}) as { messages?: Message[]; message?: string };
+      const vBody = (v.data ?? {}) as { vaults?: Vault[]; error?: string };
+      if (mBody.message) errs.push(`messages: ${mBody.message}`);
+      if (vBody.error) errs.push(`vaults: ${vBody.error}`);
+
+      setMsgs(mBody.messages ?? []);
+      setVaults(vBody.vaults ?? []);
+      setError(errs.length > 0 ? errs.join(" · ") : null);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!publicKey) {
@@ -84,14 +112,16 @@ export function InboxClient() {
     const pk = publicKey.toBase58();
     setMsgs(null);
     setVaults(null);
-    load(pk).catch((e) => alive && setError(String(e)));
+    load(pk, () => alive).catch((e) => {
+      if (alive) setError(String(e));
+    });
     return () => {
       alive = false;
     };
   }, [publicKey, load]);
 
   const refresh = useCallback(() => {
-    if (publicKey) void load(publicKey.toBase58());
+    if (publicKey) void load(publicKey.toBase58(), () => true);
   }, [publicKey, load]);
 
   if (!connected || !publicKey) {

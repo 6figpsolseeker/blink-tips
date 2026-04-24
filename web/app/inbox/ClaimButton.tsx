@@ -2,7 +2,7 @@
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Transaction, VersionedTransaction } from "@solana/web3.js";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 function base64ToBytes(b64: string): Uint8Array {
   const std = b64.replace(/-/g, "+").replace(/_/g, "/");
@@ -14,6 +14,9 @@ function base64ToBytes(b64: string): Uint8Array {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const REJECTION_RE =
+  /(?:user|request|transaction|approval|sign(?:ing|ature)?)\s+(?:request\s+)?(?:was\s+)?(?:rejected|denied|cancell?ed|aborted)|(?:rejected|cancell?ed|denied)\s+by\s+(?:the\s+)?user/i;
 
 type Status =
   | { kind: "idle" }
@@ -33,21 +36,32 @@ export function ClaimButton({
   const { connection } = useConnection();
   const { publicKey, signTransaction } = useWallet();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  // Synchronous mutex — React state updates lag behind the click event, so
+  // the visually-disabled button can still fire twice in a row. A ref
+  // blocks re-entry immediately.
+  const inFlight = useRef(false);
 
   const phaseLabel = (p: "build" | "sign" | "send" | "confirm") =>
-    ({ build: "Preparing…", sign: "Approve…", send: "Sending…", confirm: "Confirming…" }[p]);
+    ({ build: "Preparing…", sign: "Approve…", send: "Sending…", confirm: "Confirming…" })[p];
 
   const claim = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     if (!publicKey || !signTransaction) {
+      inFlight.current = false;
       setStatus({ kind: "err", message: "Connect your wallet first" });
       return;
     }
+    // Snapshot the connected account before any async work. If the user
+    // switches wallets mid-flow we bail instead of signing a tx for the
+    // wrong key.
+    const submitAccount = publicKey;
     setStatus({ kind: "busy", phase: "build" });
     try {
       const res = await fetch(`/api/actions/claim/${tipper}/${recipient}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ account: publicKey.toBase58() }),
+        body: JSON.stringify({ account: submitAccount.toBase58() }),
       });
       if (!res.ok) {
         const text = await res.text();
@@ -69,10 +83,36 @@ export function ClaimButton({
       } catch {
         tx = Transaction.from(bytes);
       }
+
+      // Defense-in-depth: verify the server-built tx pays from our wallet.
+      const feePayer =
+        tx instanceof VersionedTransaction
+          ? tx.message.staticAccountKeys[0]
+          : tx.feePayer ?? null;
+      if (!feePayer || !feePayer.equals(submitAccount)) {
+        throw new Error(
+          "Transaction feePayer does not match the connected wallet — refusing to sign.",
+        );
+      }
+      if (!publicKey || !publicKey.equals(submitAccount)) {
+        throw new Error(
+          "Wallet changed mid-flow — please click Claim again from the new wallet.",
+        );
+      }
+
+      // Refresh the blockhash right before signing. Wrapped so a Helius hiccup
+      // surfaces as a readable error instead of a generic "fetch failed".
       if (tx instanceof Transaction) {
-        const fresh = await connection.getLatestBlockhash("confirmed");
-        tx.recentBlockhash = fresh.blockhash;
-        tx.lastValidBlockHeight = fresh.lastValidBlockHeight;
+        try {
+          const fresh = await connection.getLatestBlockhash("confirmed");
+          tx.recentBlockhash = fresh.blockhash;
+          tx.lastValidBlockHeight = fresh.lastValidBlockHeight;
+        } catch (e) {
+          console.error("[claim] getLatestBlockhash failed", e);
+          throw new Error(
+            "Couldn't fetch a fresh blockhash from the RPC — please retry in a moment.",
+          );
+        }
       }
 
       setStatus({ kind: "busy", phase: "sign" });
@@ -88,7 +128,7 @@ export function ClaimButton({
       setStatus({ kind: "busy", phase: "confirm" });
       let landed: { err: unknown; confirmationStatus?: string } | null = null;
       let fails = 0;
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 90; i++) {
         try {
           const s = await connection.getSignatureStatus(signature, {
             searchTransactionHistory: true,
@@ -103,33 +143,40 @@ export function ClaimButton({
             landed = val;
             break;
           }
-        } catch {
+        } catch (pollErr) {
           fails += 1;
-          if (fails >= 10) break;
+          if (fails >= 10) {
+            console.error("[claim] getSignatureStatus failing repeatedly", pollErr);
+            break;
+          }
         }
         await sleep(1000);
       }
       if (!landed) {
-        setStatus({ kind: "err", message: "Confirmation timed out. Check Solscan." });
+        setStatus({
+          kind: "err",
+          message: "Confirmation timed out — the tx may still land, check Solscan.",
+        });
         return;
       }
       if (landed.err) {
-        setStatus({ kind: "err", message: `On-chain error: ${JSON.stringify(landed.err)}` });
+        setStatus({
+          kind: "err",
+          message: `On-chain error: ${JSON.stringify(landed.err)}`,
+        });
         return;
       }
       setStatus({ kind: "ok", signature });
       onSuccess?.();
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
-      if (
-        /(?:user|request|transaction|approval|sign(?:ing|ature)?)\s+(?:request\s+)?(?:was\s+)?(?:rejected|denied|cancell?ed|aborted)|(?:rejected|cancell?ed|denied)\s+by\s+(?:the\s+)?user/i.test(
-          m,
-        )
-      ) {
+      if (REJECTION_RE.test(m)) {
         setStatus({ kind: "idle" });
         return;
       }
       setStatus({ kind: "err", message: m });
+    } finally {
+      inFlight.current = false;
     }
   };
 
