@@ -3,14 +3,6 @@ import { TipClient } from "./TipClient";
 
 type Props = { params: Promise<{ recipient: string }> };
 
-function resolveRpcUrl(): string {
-  if (process.env.RPC_URL) return process.env.RPC_URL;
-  const network = (process.env.NETWORK ?? "devnet").toLowerCase();
-  return network === "mainnet"
-    ? "https://api.mainnet-beta.solana.com"
-    : "https://api.devnet.solana.com";
-}
-
 export default async function TipPage({ params }: Props) {
   const { recipient } = await params;
   let valid = true;
@@ -20,7 +12,6 @@ export default async function TipPage({ params }: Props) {
     valid = false;
   }
   const short = valid ? `${recipient.slice(0, 4)}…${recipient.slice(-4)}` : "…";
-  const rpcUrl = resolveRpcUrl();
   const actionUrl = `/api/actions/subscribe/${recipient}`;
 
   return (
@@ -30,7 +21,7 @@ export default async function TipPage({ params }: Props) {
           <h1 className="mb-6 text-2xl font-semibold tracking-tight">
             Tip {short}
           </h1>
-          <TipClient url={actionUrl} rpcUrl={rpcUrl} />
+          <TipClient url={actionUrl} />
           <div className="mt-6 text-xs text-neutral-500">
             <a href="/" className="underline hover:text-neutral-200">
               ← blink-tips

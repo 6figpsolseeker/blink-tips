@@ -18,6 +18,6 @@ const CustomBlinkCard = dynamic(
 );
 
 // Providers live in the root layout now — no nesting needed here.
-export function TipClient({ url }: { url: string; rpcUrl?: string }) {
+export function TipClient({ url }: { url: string }) {
   return <CustomBlinkCard url={url} />;
 }

@@ -4,14 +4,6 @@ import { TipperMessages } from "./TipperMessages";
 
 type Props = { params: Promise<{ tipper: string; recipient: string }> };
 
-function resolveRpcUrl(): string {
-  if (process.env.RPC_URL) return process.env.RPC_URL;
-  const network = (process.env.NETWORK ?? "devnet").toLowerCase();
-  return network === "mainnet"
-    ? "https://api.mainnet-beta.solana.com"
-    : "https://api.devnet.solana.com";
-}
-
 function parse(raw: string): PublicKey | null {
   try {
     return new PublicKey(raw);
@@ -24,7 +16,6 @@ export default async function ClaimPage({ params }: Props) {
   const { tipper, recipient } = await params;
   const tipperKey = parse(tipper);
   const recipientKey = parse(recipient);
-  const rpcUrl = resolveRpcUrl();
   const actionUrl = `/api/actions/claim/${tipper}/${recipient}`;
   const short = (s: string) => `${s.slice(0, 4)}…${s.slice(-4)}`;
 
@@ -39,7 +30,7 @@ export default async function ClaimPage({ params }: Props) {
             to {short(recipient)}
           </p>
           <TipperMessages tipper={tipper} recipient={recipient} />
-          <ClaimClient url={actionUrl} rpcUrl={rpcUrl} />
+          <ClaimClient url={actionUrl} />
           <p className="mt-4 text-xs text-neutral-500">
             Claim is permissionless — any wallet can crank it and funds still
             flow to the stored recipient.

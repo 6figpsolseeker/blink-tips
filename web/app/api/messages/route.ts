@@ -85,9 +85,9 @@ export async function POST(req: Request) {
       typeof body.txSignature === "string" && body.txSignature.length > 0
         ? body.txSignature.slice(0, 128)
         : null;
-    // Base58 signatures are 87-88 chars, A-Za-z1-9 only — cheap pre-filter
-    // before hitting RPC.
-    if (!txSignature || !/^[1-9A-HJ-NP-Za-km-z]{80,128}$/.test(txSignature)) {
+    // Solana signatures are 64 bytes → 87–88 base58 chars. Tighten the range
+    // so obviously-invalid values bail before we spend an RPC call.
+    if (!txSignature || !/^[1-9A-HJ-NP-Za-km-z]{86,90}$/.test(txSignature)) {
       return jsonError("Message must include the tx signature that proves the tip");
     }
 
@@ -107,20 +107,38 @@ export async function POST(req: Request) {
         );
       }
       const message = tx.transaction.message;
-      // Both legacy and v0 messages expose either staticAccountKeys or accountKeys.
-      const keys =
+      const staticKeys =
         "staticAccountKeys" in message
           ? (message.staticAccountKeys as PublicKey[])
           : (message as { accountKeys: PublicKey[] }).accountKeys;
+
+      // Signers are always static (Solana runtime forbids lookup tables for
+      // signer accounts), so slicing static keys is correct for both legacy
+      // and v0 txs.
       const numSigners = message.header.numRequiredSignatures;
-      const signers = keys.slice(0, numSigners);
+      const signers = staticKeys.slice(0, numSigners);
       if (!signers.some((k) => k.equals(tipper))) {
         return jsonError(
           "The provided tipper did not sign the referenced transaction.",
           403,
         );
       }
-      if (!keys.some((k) => k.equals(getProgramId()))) {
+
+      // Program IDs can come from address-lookup tables on v0 txs, so also
+      // include the resolved writable/readonly accounts from tx.meta.
+      const allKeys: PublicKey[] = [...staticKeys];
+      const loaded = tx.meta?.loadedAddresses;
+      if (loaded?.writable) {
+        for (const k of loaded.writable) {
+          allKeys.push(typeof k === "string" ? new PublicKey(k) : k);
+        }
+      }
+      if (loaded?.readonly) {
+        for (const k of loaded.readonly) {
+          allKeys.push(typeof k === "string" ? new PublicKey(k) : k);
+        }
+      }
+      if (!allKeys.some((k) => k.equals(getProgramId()))) {
         return jsonError(
           "Referenced transaction is not a blink-tips transaction.",
           403,

@@ -31,6 +31,32 @@ type Vault = {
 
 const LAMPORTS_PER_SOL = 1_000_000_000n;
 
+// Known tokens keyed by mint. Covers both mainnet + devnet USDC so the inbox
+// renders correctly regardless of which network we're pointing at.
+const KNOWN_MINTS: Record<string, { symbol: string; decimals: number }> = {
+  EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: { symbol: "USDC", decimals: 6 },
+  "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU": { symbol: "USDC", decimals: 6 },
+};
+
+function mintLabel(mint?: string): string {
+  if (!mint) return "SOL";
+  return KNOWN_MINTS[mint]?.symbol ?? `${mint.slice(0, 4)}…${mint.slice(-4)}`;
+}
+
+function scaleToken(raw: string, decimals: number): string {
+  const n = BigInt(raw);
+  if (decimals === 0) return n.toString();
+  const divisor = 10n ** BigInt(decimals);
+  const whole = n / divisor;
+  const frac = n % divisor;
+  const fracStr = frac
+    .toString()
+    .padStart(decimals, "0")
+    .slice(0, Math.min(decimals, 6))
+    .replace(/0+$/, "");
+  return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
+}
+
 function short(s: string) {
   return `${s.slice(0, 4)}…${s.slice(-4)}`;
 }
@@ -233,9 +259,7 @@ function VaultRow({
           from {short(vault.tipper)}
           {vault.type === "token" && vault.mint && (
             <span className="ml-2 rounded bg-neutral-900 px-1.5 py-0.5 text-[10px] text-neutral-500">
-              {vault.mint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-                ? "USDC"
-                : short(vault.mint)}
+              {mintLabel(vault.mint)}
             </span>
           )}
         </div>
@@ -251,7 +275,13 @@ function VaultRow({
           <div className="mt-0.5 font-mono text-neutral-200">
             {vault.type === "sol"
               ? `${lamportsToSol(vault.totalClaimed)} SOL`
-              : vault.totalClaimed}
+              : (() => {
+                  const info = vault.mint ? KNOWN_MINTS[vault.mint] : null;
+                  if (info) {
+                    return `${scaleToken(vault.totalClaimed, info.decimals)} ${info.symbol}`;
+                  }
+                  return `${vault.totalClaimed} base units`;
+                })()}
           </div>
         </div>
         <div>
