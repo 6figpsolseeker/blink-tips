@@ -95,7 +95,7 @@ Open http://localhost:3000 — the root page lists available endpoints. Share `h
 
 ## Mainnet deploy checklist
 
-The program is live on **devnet only**. Before deploying to mainnet, walk through this list — the project is **not audited**, and several defaults only make sense for devnet.
+The program is live on **mainnet** at `Bqe678ZN7zXYWWnZqVNKGVbGe5javsqdhoLcyYb8JUsY`. This checklist documents the steps we followed (and that any redeployer should). The project is **not audited** — use at your own risk.
 
 1. **Generate a fresh program keypair** for mainnet (do not reuse the devnet keypair):
    ```bash
